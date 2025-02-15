@@ -1,0 +1,18 @@
+{
+  "name": "thermostat",
+  "version": "1.0.0",
+  "description": "Thermostat-Simulator für SmartHome",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "fastify": "^5.2.1",
+    "fastify-mqtt": "^1.0.0",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}
