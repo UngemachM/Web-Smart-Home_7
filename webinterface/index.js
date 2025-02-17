@@ -1,14 +1,15 @@
 const fastify = require('fastify')();
 const path = require('path');
 
-// Statische Dateien ausliefern
+// Statische Dateien aus dem dist Ordner ausliefern
 fastify.register(require('@fastify/static'), {
-  root: path.join(__dirname, 'public'),
-  prefix: '/public/', // z.B. http://localhost:8080/public/index.html
+  root: path.join(__dirname, 'dist'),
+  prefix: '/'
 });
 
-fastify.get('/', async (request, reply) => {
-  return reply.sendFile('index.html');
+// Für client-side routing
+fastify.setNotFoundHandler((request, reply) => {
+  reply.sendFile('index.html');
 });
 
 fastify.listen({ port: 8080, host: '0.0.0.0' }, (err, address) => {
