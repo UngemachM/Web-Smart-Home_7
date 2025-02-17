@@ -1,37 +1,72 @@
 
-services:
-  fensterkontakt:
-    build: fensterkontakt
-    container_name: fensterkontakt
-    ports:
-      - "3001:3001"
-    networks:
-      - smartHome
+# services:
+#   fensterkontakt:
+#     build: fensterkontakt
+#     container_name: fensterkontakt
+#     ports:
+#       - "3001:3001"
+#     networks:
+#       - smartHome
 
+#   smarthome:
+#     build: smarthome
+#     container_name: smarthome
+#     ports:
+#       - "3000:3000"
+#     networks:
+#       - smartHome
+
+#   thermostat:
+#     build: thermostat
+#     container_name: thermostat
+#     ports:
+#       - "3002:3002"
+#     networks:
+#       - smartHome
+
+#   webinterface:
+#     build: webinterface
+#     container_name: webinterface
+#     ports:
+#       - "8080:8080"
+#     networks:
+#       - smartHome
+
+# networks:
+#   smartHome:
+#     driver: bridge
+
+version: '3'
+services:
+  mosquitto:
+    build: 
+      context: .
+      dockerfile: mosquitto.dockerfile
+    ports:
+      - "1883:1883"
+    
   smarthome:
-    build: smarthome
-    container_name: smarthome
+    build: ./smarthome
     ports:
       - "3000:3000"
-    networks:
-      - smartHome
+    depends_on:
+      - mosquitto
+
+  fensterkontakt:
+    build: ./fensterkontakt
+    depends_on:
+      - smarthome
+      - mosquitto
 
   thermostat:
-    build: thermostat
-    container_name: thermostat
-    ports:
-      - "3002:3002"
-    networks:
-      - smartHome
+    build: ./thermostat
+    depends_on:
+      - smarthome
+      - mosquitto
 
   webinterface:
-    build: webinterface
-    container_name: webinterface
+    build: ./webinterface
     ports:
       - "8080:8080"
-    networks:
-      - smartHome
-
-networks:
-  smartHome:
-    driver: bridge
+    depends_on:
+      - smarthome

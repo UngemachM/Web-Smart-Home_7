@@ -10,7 +10,8 @@
   "dependencies": {
     "fastify": "^5.2.1",
     "fastify-mqtt": "^1.0.0",
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "mqtt": "^4.3.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
