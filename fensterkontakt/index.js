@@ -1,11 +1,13 @@
 const fastify = require('fastify')();
 const mqtt = require('mqtt');
 
-const deviceId = 'fensterkontakt_1';
+// Konfiguration über Umgebungsvariablen
+const deviceId = process.env.DEVICE_ID || 'fensterkontakt_1';
+const port = process.env.PORT || 3001;
 const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 
 mqttClient.on('connect', () => {
-  console.log('Fensterkontakt mit MQTT verbunden');
+  console.log(`Fensterkontakt ${deviceId} mit MQTT verbunden`);
   
   const registrationData = {
     id: deviceId,
@@ -16,22 +18,17 @@ mqttClient.on('connect', () => {
   mqttClient.publish('smarthome/register', JSON.stringify(registrationData));
 });
 
-// Bestätigung der Registrierung empfangen
-mqttClient.subscribe(`smarthome/register/confirm/${deviceId}`);
-mqttClient.on('message', (topic, message) => {
-  if (topic === `smarthome/register/confirm/${deviceId}`) {
-    console.log('Registrierung bestätigt');
-  }
-});
-
 fastify.get('/', async (request, reply) => {
-  reply.send({ message: "Fensterkontakt läuft!" });
+  reply.send({ 
+    message: `Fensterkontakt ${deviceId} läuft!`,
+    status: 'closed'
+  });
 });
 
-fastify.listen({ port: 3001, host: '0.0.0.0' }, (err) => {
+fastify.listen({ port: port, host: '0.0.0.0' }, (err) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
-  console.log('Fensterkontakt Server läuft auf Port 3001');
+  console.log(`Fensterkontakt ${deviceId} Server läuft auf Port ${port}`);
 });

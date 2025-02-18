@@ -52,14 +52,56 @@ services:
     depends_on:
       - mosquitto
 
-  fensterkontakt:
+  fensterkontakt1:
     build: ./fensterkontakt
+    environment:
+      - DEVICE_ID=fensterkontakt_1
+      - PORT=3001
     depends_on:
       - smarthome
       - mosquitto
 
-  thermostat:
+  # fensterkontakt2:
+  #   build: ./fensterkontakt
+  #   environment:
+  #     - DEVICE_ID=fensterkontakt_2
+  #     - PORT=3011
+  #   depends_on:
+  #     - smarthome
+  #     - mosquitto
+
+  thermostat1:
     build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_1
+      - PORT=3002
+    depends_on:
+      - smarthome
+      - mosquitto
+
+  thermostat2:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_2
+      - PORT=3012
+    depends_on:
+      - smarthome
+      - mosquitto
+
+  thermostat3:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_3
+      - PORT=3022
+    depends_on:
+      - smarthome
+      - mosquitto
+
+  thermostat4:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_4
+      - PORT=3032
     depends_on:
       - smarthome
       - mosquitto

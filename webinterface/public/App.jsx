@@ -9,8 +9,21 @@ function App() {
     const fetchDevices = async () => {
       try {
         const response = await axios.get('http://localhost:3000/devices');
-        console.log('Empfangene Geräte:', response.data);
-        setDevices(response.data);
+        // Sortiere die Geräte nach ID
+        const sortedDevices = response.data.sort((a, b) => {
+          const aNum = parseInt(a.id.split('_')[1]);
+          const bNum = parseInt(b.id.split('_')[1]);
+          
+          // Sortiere erst nach Typ (fensterkontakt vor thermostat)
+          if (a.type !== b.type) {
+            return a.type === 'fensterkontakt' ? -1 : 1;  // Fensterkontakt zuerst
+          }
+          
+          // Wenn gleicher Typ, sortiere nach Nummer
+          return aNum - bNum;
+        });
+        
+        setDevices(sortedDevices);
         setError(null);
       } catch (err) {
         console.error('Fehler beim Abrufen der Geräte:', err);
