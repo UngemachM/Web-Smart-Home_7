@@ -12,6 +12,7 @@
     "fastify-mqtt": "^1.0.0",
     "dotenv": "^16.0.3",
     "@fastify/cors": "^8.0.0",
+    "@fastify/formbody": "^7.0.0",
     "mqtt": "^4.3.7"
   },
   "devDependencies": {

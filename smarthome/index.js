@@ -1,5 +1,6 @@
 const fastify = require('fastify')();
 const mqtt = require('mqtt');
+const { setupRoomRoutes } = require('./room.js');
 
 // CORS aktivieren
 fastify.register(require('@fastify/cors'), {
@@ -12,6 +13,8 @@ let registeredDevices = new Map();
 // MQTT Client
 const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 
+fastify.register(require('@fastify/formbody'));
+
 // GET Endpoint für Geräteliste
 fastify.get('/', async (request, reply) => {
   reply.send({ message: "SmartHome-Backend läuft!" });
@@ -20,6 +23,8 @@ fastify.get('/', async (request, reply) => {
 fastify.get('/devices', async (request, reply) => {
   return Array.from(registeredDevices.values());
 });
+
+setupRoomRoutes(fastify);
 
 // MQTT Verbindung
 mqttClient.on('connect', () => {
