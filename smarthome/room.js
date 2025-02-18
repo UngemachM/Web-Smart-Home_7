@@ -37,7 +37,7 @@ function setupRoomRoutes(fastify) {
 
   fastify.put('/rooms/:roomId/temperature', async (request, reply) => {
     const { roomId } = request.params;
-    const { roomTemp, absenkTemp } = request.body;
+    const { thermostats } = request.body;
     
     const room = rooms.get(roomId);
     if (!room) {
@@ -45,24 +45,20 @@ function setupRoomRoutes(fastify) {
       return;
     }
     
-    room.roomTemperature = roomTemp;
-    
-    // Für jedes Thermostat im Raum die Absenktemperatur setzen
-    room.devices.forEach(deviceId => {
-      if (deviceId.includes('thermostat')) {
-        // MQTT Nachricht an Thermostate senden
-        fastify.mqtt.publish(`smarthome/thermostat/${deviceId}/setTemp`, 
-          JSON.stringify({ 
-            roomTemp: roomTemp,
-            absenkTemp: absenkTemp 
-          })
-        );
-      }
+    // Speichere Einstellungen für jedes Thermostat
+    Object.entries(thermostats).forEach(([thermostatId, settings]) => {
+      // MQTT Nachricht an spezifisches Thermostat senden
+      fastify.mqtt.publish(`smarthome/thermostat/${thermostatId}/setTemp`, 
+        JSON.stringify(settings)
+      );
     });
+    
+    // Speichere die Einstellungen auch im Room-Objekt
+    room.thermostatSettings = thermostats;
     
     return room;
   });
-
+  
   fastify.get('/rooms/:roomId/temperature', async (request, reply) => {
     const { roomId } = request.params;
     const room = rooms.get(roomId);

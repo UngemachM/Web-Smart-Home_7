@@ -5,9 +5,19 @@ function RoomItem({ room, devices, onRoomUpdated }) {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
   const [isSaving, setIsSaving] = useState(false);
-  const [roomTemp, setRoomTemp] = useState(room.roomTemperature || 21);
-  const [absenkTemp, setAbsenkTemp] = useState(17);
   const [isEditingTemp, setIsEditingTemp] = useState(false);
+  const [thermostatsSettings, setThermostatsSettings] = useState(
+    // Initialisiere Einstellungen für jedes Thermostat
+    devices
+      .filter(device => device.type === 'thermostat')
+      .reduce((acc, device) => ({
+        ...acc,
+        [device.id]: {
+          roomTemp: device.roomTemp || 21,
+          absenkTemp: device.absenkTemp || 17
+        }
+      }), {})
+  );
 
   const roomDevices = devices.filter(device => 
     room.devices && room.devices.includes(device.id)
@@ -45,10 +55,7 @@ function RoomItem({ room, devices, onRoomUpdated }) {
     try {
       const response = await axios.put(
         `http://localhost:3000/rooms/${room.id}/temperature`,
-        {
-          roomTemp: parseFloat(roomTemp),
-          absenkTemp: parseFloat(absenkTemp)
-        }
+        { thermostats: thermostatsSettings }
       );
       onRoomUpdated(response.data);
       setIsEditingTemp(false);
@@ -124,61 +131,91 @@ function RoomItem({ room, devices, onRoomUpdated }) {
         </button>
       )}
 
-      {/* Temperatureinstellungen */}
+      {/* Temperatureinstellungen pro Thermostat */}
       {thermostatsInRoom.length > 0 && (
         <div className="mt-4 border-t pt-4">
           <h4 className="text-md font-medium mb-2">Temperatureinstellungen</h4>
           {isEditingTemp ? (
-            <div className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <label className="text-sm">
-                  Raumtemperatur:
-                  <input
-                    type="number"
-                    value={roomTemp}
-                    onChange={(e) => setRoomTemp(e.target.value)}
-                    className="ml-2 p-1 border rounded w-20"
-                    step="0.5"
-                    min="5"
-                    max="30"
-                  /> °C
-                </label>
-                
-                <label className="text-sm">
-                  Absenktemperatur:
-                  <input
-                    type="number"
-                    value={absenkTemp}
-                    onChange={(e) => setAbsenkTemp(e.target.value)}
-                    className="ml-2 p-1 border rounded w-20"
-                    step="0.5"
-                    min="5"
-                    max="30"
-                  /> °C
-                </label>
-              </div>
-
-              <div className="flex gap-2">
-                {/* <button
-                  onClick={handleTemperatureSubmit}
-                  disabled={isSaving}
-                  className="bg-green-500 text-white px-3 py-1 text-sm rounded hover:bg-green-600 disabled:bg-green-300"
-                >
-                  {isSaving ? 'Wird gespeichert...' : 'Temperatur speichern'}
-                </button> */}
-                <button
+            <div className="space-y-6">
+              {thermostatsInRoom.map(thermostat => (
+                <div key={thermostat.id} className="pb-4 border-b last:border-b-0">
+                  <h5 className="font-medium text-sm mb-2">
+                    Thermostat: {thermostat.id}
+                  </h5>
+                  <div className="flex flex-col space-y-2">
+                    <label className="text-sm">
+                      Raumtemperatur:
+                      <input
+                        type="number"
+                        value={thermostatsSettings[thermostat.id]?.roomTemp || 21}
+                        onChange={(e) => {
+                          setThermostatsSettings(prev => ({
+                            ...prev,
+                            [thermostat.id]: {
+                              ...prev[thermostat.id],
+                              roomTemp: parseFloat(e.target.value)
+                            }
+                          }));
+                        }}
+                        className="ml-2 p-1 border rounded w-20"
+                        step="0.5"
+                        min="5"
+                        max="30"
+                      /> °C
+                    </label>
+                    
+                    <label className="text-sm">
+                      Absenktemperatur:
+                      <input
+                        type="number"
+                        value={thermostatsSettings[thermostat.id]?.absenkTemp || 17}
+                        onChange={(e) => {
+                          setThermostatsSettings(prev => ({
+                            ...prev,
+                            [thermostat.id]: {
+                              ...prev[thermostat.id],
+                              absenkTemp: parseFloat(e.target.value)
+                            }
+                          }));
+                        }}
+                        className="ml-2 p-1 border rounded w-20"
+                        step="0.5"
+                        min="5"
+                        max="30"
+                      /> °C
+                    </label>
+                  </div>
+                </div>
+              ))}
+              {/* <button
+                onClick={handleTemperatureSubmit}
+                disabled={isSaving}
+                className="bg-green-500 text-white px-3 py-1 text-sm rounded hover:bg-green-600 disabled:bg-green-300"
+              >
+                {isSaving ? 'Wird gespeichert...' : 'Speichern'}
+              </button> */}
+              <button
                   onClick={() => setIsEditingTemp(false)}
                   className="border px-3 py-1 text-sm rounded hover:bg-gray-100"
                 >
                   Speichern
                 </button>
-              </div>
             </div>
           ) : (
-            <div>
-              <p className="text-sm">Aktuelle Einstellungen:</p>
-              <p className="text-sm text-gray-600">Raumtemperatur: {roomTemp}°C</p>
-              <p className="text-sm text-gray-600">Absenktemperatur: {absenkTemp}°C</p>
+            <div className="space-y-4">
+              {thermostatsInRoom.map(thermostat => (
+                <div key={thermostat.id} className="pb-4 border-b last:border-b-0">
+                  <h5 className="font-medium text-sm">
+                    Thermostat: {thermostat.id}
+                  </h5>
+                  <p className="text-sm text-gray-600">
+                    Raumtemperatur: {thermostatsSettings[thermostat.id]?.roomTemp || 21}°C
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Absenktemperatur: {thermostatsSettings[thermostat.id]?.absenkTemp || 17}°C
+                  </p>
+                </div>
+              ))}
               <button
                 onClick={() => setIsEditingTemp(true)}
                 className="mt-2 text-blue-500 text-sm hover:text-blue-700"
