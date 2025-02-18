@@ -34,6 +34,51 @@ function setupRoomRoutes(fastify) {
     room.devices = deviceIds;
     return room;
   });
+
+  fastify.put('/rooms/:roomId/temperature', async (request, reply) => {
+    const { roomId } = request.params;
+    const { roomTemp, absenkTemp } = request.body;
+    
+    const room = rooms.get(roomId);
+    if (!room) {
+      reply.code(404).send({ error: 'Room not found' });
+      return;
+    }
+    
+    room.roomTemperature = roomTemp;
+    
+    // Für jedes Thermostat im Raum die Absenktemperatur setzen
+    room.devices.forEach(deviceId => {
+      if (deviceId.includes('thermostat')) {
+        // MQTT Nachricht an Thermostate senden
+        fastify.mqtt.publish(`smarthome/thermostat/${deviceId}/setTemp`, 
+          JSON.stringify({ 
+            roomTemp: roomTemp,
+            absenkTemp: absenkTemp 
+          })
+        );
+      }
+    });
+    
+    return room;
+  });
+
+  fastify.get('/rooms/:roomId/temperature', async (request, reply) => {
+    const { roomId } = request.params;
+    const room = rooms.get(roomId);
+    
+    if (!room) {
+      reply.code(404).send({ error: 'Room not found' });
+      return;
+    }
+    
+    return {
+      roomTemperature: room.roomTemperature || null,
+      devices: room.devices
+    };
+  });
+
+
 }
 
 module.exports = { setupRoomRoutes };

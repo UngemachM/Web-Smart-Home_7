@@ -34,3 +34,20 @@ fastify.listen({ port: port, host: '0.0.0.0' }, (err) => {
   }
   console.log(`Thermostat ${deviceId} Server läuft auf Port ${port}`);
 });
+
+mqttClient.subscribe(`smarthome/thermostat/${deviceId}/setTemp`);
+
+mqttClient.on('message', (topic, message) => {
+  if (topic === `smarthome/thermostat/${deviceId}/setTemp`) {
+    try {
+      const { roomTemp, absenkTemp } = JSON.parse(message.toString());
+      // Temperatureinstellungen speichern
+      currentSettings.targetTemp = roomTemp;
+      currentSettings.absenkTemp = absenkTemp;
+      console.log(`Neue Temperatureinstellungen für ${deviceId}:`, 
+        { roomTemp, absenkTemp });
+    } catch (error) {
+      console.error('Fehler beim Verarbeiten der Temperatureinstellung:', error);
+    }
+  }
+});

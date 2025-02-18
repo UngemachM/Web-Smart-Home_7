@@ -5,9 +5,16 @@ function RoomItem({ room, devices, onRoomUpdated }) {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
   const [isSaving, setIsSaving] = useState(false);
+  const [roomTemp, setRoomTemp] = useState(room.roomTemperature || 21);
+  const [absenkTemp, setAbsenkTemp] = useState(17);
+  const [isEditingTemp, setIsEditingTemp] = useState(false);
 
   const roomDevices = devices.filter(device => 
     room.devices && room.devices.includes(device.id)
+  );
+
+  const thermostatsInRoom = devices.filter(
+    device => room.devices && room.devices.includes(device.id) && device.type === 'thermostat'
   );
 
   const handleToggleDevice = (deviceId) => {
@@ -28,6 +35,25 @@ function RoomItem({ room, devices, onRoomUpdated }) {
       setIsEditing(false);
     } catch (err) {
       console.error('Fehler beim Speichern der Geräte:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTemperatureSubmit = async () => {
+    setIsSaving(true);
+    try {
+      const response = await axios.put(
+        `http://localhost:3000/rooms/${room.id}/temperature`,
+        {
+          roomTemp: parseFloat(roomTemp),
+          absenkTemp: parseFloat(absenkTemp)
+        }
+      );
+      onRoomUpdated(response.data);
+      setIsEditingTemp(false);
+    } catch (error) {
+      console.error('Fehler beim Speichern der Temperatur:', error);
     } finally {
       setIsSaving(false);
     }
@@ -96,6 +122,72 @@ function RoomItem({ room, devices, onRoomUpdated }) {
         >
           Geräte bearbeiten
         </button>
+      )}
+
+      {/* Temperatureinstellungen */}
+      {thermostatsInRoom.length > 0 && (
+        <div className="mt-4 border-t pt-4">
+          <h4 className="text-md font-medium mb-2">Temperatureinstellungen</h4>
+          {isEditingTemp ? (
+            <div className="space-y-4">
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm">
+                  Raumtemperatur:
+                  <input
+                    type="number"
+                    value={roomTemp}
+                    onChange={(e) => setRoomTemp(e.target.value)}
+                    className="ml-2 p-1 border rounded w-20"
+                    step="0.5"
+                    min="5"
+                    max="30"
+                  /> °C
+                </label>
+                
+                <label className="text-sm">
+                  Absenktemperatur:
+                  <input
+                    type="number"
+                    value={absenkTemp}
+                    onChange={(e) => setAbsenkTemp(e.target.value)}
+                    className="ml-2 p-1 border rounded w-20"
+                    step="0.5"
+                    min="5"
+                    max="30"
+                  /> °C
+                </label>
+              </div>
+
+              <div className="flex gap-2">
+                {/* <button
+                  onClick={handleTemperatureSubmit}
+                  disabled={isSaving}
+                  className="bg-green-500 text-white px-3 py-1 text-sm rounded hover:bg-green-600 disabled:bg-green-300"
+                >
+                  {isSaving ? 'Wird gespeichert...' : 'Temperatur speichern'}
+                </button> */}
+                <button
+                  onClick={() => setIsEditingTemp(false)}
+                  className="border px-3 py-1 text-sm rounded hover:bg-gray-100"
+                >
+                  Speichern
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm">Aktuelle Einstellungen:</p>
+              <p className="text-sm text-gray-600">Raumtemperatur: {roomTemp}°C</p>
+              <p className="text-sm text-gray-600">Absenktemperatur: {absenkTemp}°C</p>
+              <button
+                onClick={() => setIsEditingTemp(true)}
+                className="mt-2 text-blue-500 text-sm hover:text-blue-700"
+              >
+                Temperatur bearbeiten
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
