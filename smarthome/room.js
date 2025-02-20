@@ -1,7 +1,19 @@
-// rooms.js
 const rooms = new Map();
 
 function setupRoomRoutes(fastify) {
+  // Get single room by ID
+  fastify.get('/rooms/:roomId', async (request, reply) => {
+    const { roomId } = request.params;
+    const room = rooms.get(roomId);
+    
+    if (!room) {
+      reply.code(404).send({ error: 'Room not found' });
+      return;
+    }
+    
+    return room;
+  });
+
   // Get all rooms
   fastify.get('/rooms', async (request, reply) => {
     return Array.from(rooms.values());
@@ -18,6 +30,27 @@ function setupRoomRoutes(fastify) {
     };
     rooms.set(roomId, newRoom);
     return newRoom;
+  });
+
+  // Update a room
+  fastify.put('/rooms/:roomId', async (request, reply) => {
+    const { roomId } = request.params;
+    const updatedRoom = request.body;
+    
+    const room = rooms.get(roomId);
+    if (!room) {
+      reply.code(404).send({ error: 'Room not found' });
+      return;
+    }
+    
+    // Aktualisiere den Raum
+    rooms.set(roomId, {
+      ...room,
+      ...updatedRoom,
+      id: roomId // Stelle sicher, dass die ID nicht überschrieben wird
+    });
+    
+    return rooms.get(roomId);
   });
 
   // Add devices to a room
@@ -73,8 +106,6 @@ function setupRoomRoutes(fastify) {
       devices: room.devices
     };
   });
-
-
 }
 
 module.exports = { setupRoomRoutes };

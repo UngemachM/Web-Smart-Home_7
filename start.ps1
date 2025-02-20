@@ -1,8 +1,8 @@
 Write-Host "Starte Container..."
 docker compose up --build -d
 
-Write-Host "Warte auf Container-Start (10 Sekunden)..."
-Start-Sleep -Seconds 10
+Write-Host "Warte auf Container-Start (20 Sekunden)..."
+Start-Sleep -Seconds 20
 
 Write-Host "Öffne Dashboard..."
 Start-Process "http://localhost:8080"
