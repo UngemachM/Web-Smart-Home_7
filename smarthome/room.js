@@ -53,6 +53,17 @@ function setupRoomRoutes(fastify) {
     return rooms.get(roomId);
   });
 
+  // Delete a room
+  fastify.delete('/rooms/:roomId', async (request, reply) => {
+    const { roomId } = request.params;
+    
+    if (rooms.delete(roomId)) {
+      return { success: true };
+    } else {
+      reply.code(404).send({ error: 'Room not found' });
+    }
+  });
+
   // Add devices to a room
   fastify.put('/rooms/:roomId/devices', async (request, reply) => {
     const { roomId } = request.params;

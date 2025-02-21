@@ -1,6 +1,7 @@
 const fastify = require('fastify')();
 const mqtt = require('mqtt');
 const { setupRoomRoutes } = require('./room.js');
+const { exec } = require('child_process');
 
 // CORS aktivieren
 fastify.register(require('@fastify/cors'), {
@@ -22,6 +23,17 @@ fastify.get('/', async (request, reply) => {
 
 fastify.get('/devices', async (request, reply) => {
   return Array.from(registeredDevices.values());
+});
+
+// Shutdown Endpoint
+fastify.post('/shutdown', async (request, reply) => {
+  try {
+    // Signal senden, dass wir herunterfahren wollen
+    process.exit(0);  // Beendet den Node.js Prozess
+    return { success: true };
+  } catch (error) {
+    reply.code(500).send({ error: 'Fehler beim Herunterfahren' });
+  }
 });
 
 setupRoomRoutes(fastify);

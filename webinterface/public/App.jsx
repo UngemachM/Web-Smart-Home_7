@@ -47,6 +47,7 @@ function App() {
 
   useEffect(() => {
     if (location.state?.message) {
+      console.log('Nachricht empfangen:', location.state.message);
       setNotification({
         message: location.state.message,
         type: location.state.type
@@ -70,6 +71,32 @@ function App() {
     }
   };
 
+  const handleDeleteRoom = async (roomId) => {
+    try {
+      await axios.delete(`http://localhost:3000/rooms/${roomId}`);
+      setRooms(rooms.filter(room => room.id !== roomId));
+      setNotification({
+        message: 'Raum erfolgreich gelöscht!',
+        type: 'success'
+      });
+    } catch (err) {
+      setError('Fehler beim Löschen des Raums');
+    }
+  };
+
+  const handleShutdown = async () => {
+    if (window.confirm('Möchten Sie das System wirklich beenden?')) {
+      try {
+        alert('Bitte schließen Sie den Browser-Tab manuell. Das System wird heruntergefahren.');
+        await axios.post('http://localhost:3000/shutdown');
+        window.close();
+      } catch (error) {
+        console.error('Fehler beim Herunterfahren:', error);
+        setError('Fehler beim Herunterfahren des Systems');
+      }
+    }
+  };
+
   const DashboardContent = () => (
     <>
       {/* Registrierte Geräte */}
@@ -78,19 +105,13 @@ function App() {
         <div className="space-y-2">
           {devices.map(device => (
             <div key={device.id}>
-              <div className="font-bold capitalize"><h3>{device.type}</h3></div>
+              <div className="font-bold capitalize">{device.type}</div>
               <div className="text-gray-600">ID: {device.id}</div>
-              {/* {device.type === 'thermostat' && (
-                <div className="text-sm text-gray-600">
-                  <div>Aktuelle Temperatur: {device.currentTemp}°C</div>
-                  <div>Zieltemperatur: {device.targetTemp}°C</div>
-                </div>
-              )}
               {device.type === 'fensterkontakt' && (
                 <div className="text-sm text-gray-600">
                   Status: {device.status}
                 </div>
-              )} */}
+              )}
             </div>
           ))}
         </div>
@@ -99,6 +120,16 @@ function App() {
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
+        </div>
+      )}
+
+      {notification && (
+        <div className={`mb-4 p-3 rounded border ${
+          notification.type === 'success' 
+            ? 'bg-green-100 border-green-400 text-green-700' 
+            : 'bg-red-100 border-red-400 text-red-700'
+        }`}>
+          {notification.message}
         </div>
       )}
 
@@ -126,12 +157,20 @@ function App() {
           <div key={room.id} className="border p-4 rounded shadow-sm">
             <div className="flex justify-between items-center">
               <h3 className="font-bold">{room.name}</h3>
-              <button
-                onClick={() => navigate(`/configure-room/${room.id}`)}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                Bearbeiten
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/configure-room/${room.id}`)}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  Bearbeiten
+                </button>
+                <button
+                  onClick={() => handleDeleteRoom(room.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  Löschen
+                </button>
+              </div>
             </div>
             <div className="mt-2">
               <h4 className="text-sm font-medium">Zugewiesene Geräte:</h4>
@@ -141,6 +180,11 @@ function App() {
                   return device ? (
                     <li key={deviceId}>
                       {device.type}: {deviceId}
+                      {device.type === 'thermostat' && (
+                        <span className="ml-2 text-gray-600">
+                          (Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C)
+                        </span>
+                      )}
                     </li>
                   ) : null;
                 })}
@@ -149,20 +193,21 @@ function App() {
           </div>
         ))}
       </div>
+
+      <div className="mt-8 mb-4">
+        <button 
+          onClick={handleShutdown}
+          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+        >
+          System beenden
+        </button>
+      </div>
     </>
   );
 
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">SmartHome Dashboard</h1>
-      
-      {notification && (
-        <div className={`mb-4 p-3 rounded ${
-          notification.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-        }`}>
-          {notification.message}
-        </div>
-      )}
 
       <Routes>
         <Route path="/configure-room/:roomId" element={<RoomConfiguration />} />
