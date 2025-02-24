@@ -1,0 +1,132 @@
+/* Allgemeine Styles */
+.container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+/* Geräte und Räume Karten */
+.device-card, .room-card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.device-card .font-bold {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.room-card .font-bold {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Eingabefelder und Buttons */
+.input {
+  padding: 0.75rem;
+  border: 1px solid #e2e2e2;
+  border-radius: 4px;
+  width: 200px;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.button.primary {
+  background-color: #0073e6;
+  color: white;
+}
+
+.button.primary:hover {
+  background-color: #005bb5;
+}
+
+.button.edit {
+  background-color: #f0f8ff;
+  color: #0073e6;
+}
+
+.button.edit:hover {
+  background-color: #e1efff;
+}
+
+.button.delete {
+  background-color: #ff4d4f;
+  color: white;
+}
+
+.button.delete:hover {
+  background-color: #d93438;
+}
+
+.button.shutdown {
+  background-color: #ff4d4f;
+  color: white;
+}
+
+.button.shutdown:hover {
+  background-color: #d93438;
+}
+
+/* Benachrichtigungen */
+.notification {
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.notification.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.notification.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* Debugging */
+.debug-container {
+  background-color: #f7fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.debug-toggle {
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.debug-arrow {
+  transition: transform 0.3s;
+  margin-right: 0.5rem;
+}
+
+.debug-arrow.open {
+  transform: rotate(90deg);
+}
+
+.debug-info {
+  margin-top: 1rem;
+  background-color: #2d3748;
+  color: #edf2f7;
+  padding: 1rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}

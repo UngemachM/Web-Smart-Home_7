@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import RoomConfiguration from './components/RoomConfiguration';
+import './App.css'; // Importiere die CSS-Datei
 
 function App() {
   const [devices, setDevices] = useState([]);
@@ -104,7 +105,7 @@ function App() {
         <h2 className="text-xl mb-4">Registrierte Geräte:</h2>
         <div className="space-y-2">
           {devices.map(device => (
-            <div key={device.id}>
+            <div key={device.id} className="device-card">
               <div className="font-bold capitalize">{device.type}</div>
               <div className="text-gray-600">ID: {device.id}</div>
               {device.type === 'fensterkontakt' && (
@@ -118,17 +119,13 @@ function App() {
       </div>
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="notification error">
           {error}
         </div>
       )}
 
       {notification && (
-        <div className={`mb-4 p-3 rounded border ${
-          notification.type === 'success' 
-            ? 'bg-green-100 border-green-400 text-green-700' 
-            : 'bg-red-100 border-red-400 text-red-700'
-        }`}>
+        <div className={`notification ${notification.type === 'success' ? 'success' : 'error'}`}>
           {notification.message}
         </div>
       )}
@@ -140,12 +137,12 @@ function App() {
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="Neuen Raum anlegen..."
-            className="flex-grow p-2 border rounded"
+            className="input"
             autoFocus
           />
           <button 
             type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="button primary"
           >
             Raum anlegen
           </button>
@@ -154,19 +151,19 @@ function App() {
 
       <div className="grid gap-4">
         {rooms.map(room => (
-          <div key={room.id} className="border p-4 rounded shadow-sm">
+          <div key={room.id} className="room-card">
             <div className="flex justify-between items-center">
               <h3 className="font-bold">{room.name}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => navigate(`/configure-room/${room.id}`)}
-                  className="text-blue-500 hover:text-blue-700"
+                  className="button edit"
                 >
                   Bearbeiten
                 </button>
                 <button
                   onClick={() => handleDeleteRoom(room.id)}
-                  className="text-red-500 hover:text-red-700"
+                  className="button delete"
                 >
                   Löschen
                 </button>
@@ -197,7 +194,7 @@ function App() {
       <div className="mt-8 mb-4">
         <button 
           onClick={handleShutdown}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+          className="button shutdown"
         >
           System beenden
         </button>
@@ -206,27 +203,25 @@ function App() {
   );
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">SmartHome Dashboard</h1>
+    <div className="container">
+      <h1 className="title">SmartHome Dashboard</h1>
 
       <Routes>
         <Route path="/configure-room/:roomId" element={<RoomConfiguration />} />
         <Route path="/" element={<DashboardContent />} />
       </Routes>
 
-      <div className="mt-8 p-4 bg-gray-100 rounded">
+      <div className="debug-container">
         <button 
           onClick={() => setIsDebugOpen(!isDebugOpen)}
-          className="font-bold flex items-center gap-2 hover:text-blue-600 transition-colors"
+          className="button debug-toggle"
         >
-          <span className={`transform transition-transform duration-200 ${isDebugOpen ? 'rotate-90' : ''}`}>
-            ▶
-          </span>
+          <span className={`debug-arrow ${isDebugOpen ? 'open' : ''}`}>▶</span>
           Debug Info
         </button>
         
         {isDebugOpen && (
-          <pre className="mt-2 text-sm overflow-auto">
+          <pre className="debug-info">
             {JSON.stringify({ devices, rooms }, null, 2)}
           </pre>
         )}
