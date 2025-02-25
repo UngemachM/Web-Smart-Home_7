@@ -263,7 +263,7 @@ useEffect(() => {
                         {device.type === 'thermostat' && (
   <div className="flex justify-between items-center mt-2">
     <div className="text-sm text-gray-600">
-      Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C
+      Aktuell: {device.currentTemp}°C
     </div>
     <button 
       onClick={() => handleThermostatStatusChange(device.id, device.currentTemp, device.targetTemp + 1)}

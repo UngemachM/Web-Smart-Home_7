@@ -11,7 +11,7 @@ const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 
 mqttClient.on('connect', () => {
   console.log(`Fensterkontakt ${deviceId} mit MQTT verbunden`);
-  let windowStatus = "open";
+  let windowStatus = "closed";
   
   
   // Registrierung des Geräts
