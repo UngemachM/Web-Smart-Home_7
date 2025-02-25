@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import RoomConfigurationContainer from './RoomConfigurationContainer';
+import './RoomConfiguration.css'; // Importiere die CSS-Datei
 
 function RoomConfiguration() {
   const navigate = useNavigate();
@@ -61,13 +62,13 @@ function RoomConfiguration() {
 
   if (error) {
     return (
-      <div className="mt-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+      <div className="container">
+        <div className="error-message">
           {error}
         </div>
         <button 
           onClick={() => navigate('/')}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="button"
         >
           Zurück zum Dashboard
         </button>
@@ -77,11 +78,11 @@ function RoomConfiguration() {
 
   if (!room) {
     return (
-      <div className="mt-8">
+      <div className="container">
         <p>Raum wurde nicht gefunden.</p>
         <button 
           onClick={() => navigate('/')}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="button"
         >
           Zurück zum Dashboard
         </button>
@@ -90,8 +91,8 @@ function RoomConfiguration() {
   }
 
   return (
-    <div className="mt-8">
-      <h2 className="text-xl font-semibold mb-4">
+    <div className="container">
+      <h2 className="title">
         {roomId ? `${room.name} bearbeiten` : 'Neuer Raum konfigurieren'}
       </h2>
       <RoomConfigurationContainer 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './RoomConfigurationDetails.css'; // Importiere die CSS-Datei
 
 function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
   const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
@@ -40,14 +41,14 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
   };
 
   return (
-    <div className="border rounded-lg p-4">
-      <h3 className="text-lg font-semibold mb-4">{room.name}</h3>
+    <div className="container">
+      <h3 className="title">{room.name}</h3>
       
-      <div className="mb-6">
-        <h4 className="text-md font-medium mb-2">Geräte auswählen:</h4>
-        <div className="grid gap-2 max-h-40 overflow-y-auto">
+      <div className="thermostat-settings">
+        <h4 className="subtitle">Geräte auswählen:</h4>
+        <div className="device-list">
           {devices.map(device => (
-            <label key={device.id} className="flex items-center gap-2 text-sm">
+            <label key={device.id} className="device-item">
               <input
                 type="checkbox"
                 checked={selectedDevices.includes(device.id)}
@@ -61,26 +62,26 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                 className="rounded"
               />
               <span className="capitalize">{device.type}</span>
-              <span className="text-gray-500 text-xs">({device.id})</span>
+              <span className="device-id">({device.id})</span>
             </label>
           ))}
         </div>
       </div>
 
-      <div className="mb-6">
-        <h4 className="text-md font-medium mb-2">Temperatureinstellungen:</h4>
+      <div className="thermostat-settings">
+        <h4 className="subtitle">Temperatureinstellungen:</h4>
         {devices
           .filter(device => 
             device.type === 'thermostat' && 
             selectedDevices.includes(device.id)
           )
           .map(thermostat => (
-            <div key={thermostat.id} className="mb-4 p-3 bg-gray-50 rounded">
-              <h5 className="font-medium text-sm mb-2">
+            <div key={thermostat.id} className="thermostat-settings">
+              <h5 className="thermostat-title">
                 Thermostat: {thermostat.id}
               </h5>
-              <div className="grid gap-3">
-                <label className="text-sm">
+              <div className="input-group">
+                <label className="input-label">
                   Raumtemperatur:
                   <input
                     type="text"
@@ -95,10 +96,10 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                         }
                       }));
                     }}
-                    className="ml-2 p-1 border rounded w-20"
+                    className="input-field"
                   /> °C
                 </label>
-                <label className="text-sm">
+                <label className="input-label">
                   Absenktemperatur:
                   <input
                     type="text"
@@ -113,7 +114,7 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                         }
                       }));
                     }}
-                    className="ml-2 p-1 border rounded w-20"
+                    className="input-field"
                   /> °C
                 </label>
               </div>
@@ -121,17 +122,17 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
           ))}
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="button-group">
         <button
           onClick={onCancel}
-          className="px-4 py-2 border rounded hover:bg-gray-100"
+          className="button button-cancel"
         >
           Abbrechen
         </button>
         <button
           onClick={handleSave}
           disabled={isSaving}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-blue-300"
+          className="button button-save"
         >
           {isSaving ? 'Wird gespeichert...' : 'Speichern'}
         </button>
