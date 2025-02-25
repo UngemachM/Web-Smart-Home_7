@@ -143,6 +143,35 @@ useEffect(() => {
     }
   };
 
+  const handleThermostatStatusChange = async (deviceId, currentTemp, targetTemp) => {
+    try {
+      setDevices(prevDevices => prevDevices.map(device => 
+        device.id === deviceId 
+          ? { ...device, currentTemp: currentTemp, targetTemp: targetTemp } 
+          : device
+      ));
+      
+      const response = await axios.post('http://localhost:3000/device/thermostat/status', {
+        deviceId: deviceId,
+        currentTemp: currentTemp,
+        targetTemp: targetTemp
+      });
+      
+      if (response.data.success) {
+        setNotification({
+          message: `Thermostat-Status aktualisiert!`,
+          type: 'success'
+        });
+      } else {
+        throw new Error(response.data.error || 'Unbekannter Fehler');
+      }
+    } catch (err) {
+      console.error('Fehler beim Ändern des Thermostat-Status:', err);
+      setError(err.response?.data?.error || err.message || 'Fehler beim Ändern des Thermostat-Status');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   const DashboardContent = () => (
     <>
       {/* Registrierte Geräte */}
@@ -232,10 +261,24 @@ useEffect(() => {
                       <div>
                         {device.type}: {deviceId}
                         {device.type === 'thermostat' && (
-                          <span className="ml-2 text-gray-600">
-                            (Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C)
-                          </span>
-                        )}
+  <div className="flex justify-between items-center mt-2">
+    <div className="text-sm text-gray-600">
+      Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C
+    </div>
+    <button 
+      onClick={() => handleThermostatStatusChange(device.id, device.currentTemp, device.targetTemp + 1)}
+      className="button small"
+    >
+      Zieltemperatur erhöhen
+    </button>
+    <button 
+      onClick={() => handleThermostatStatusChange(device.id, device.currentTemp, device.targetTemp - 1)}
+      className="button small"
+    >
+      Zieltemperatur verringern
+    </button>
+  </div>
+)}
                         {device.type === 'fensterkontakt' && (
                           <span className={`ml-2 ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>
                             ({device.status})
