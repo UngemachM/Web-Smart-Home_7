@@ -1,102 +1,153 @@
-/* RoomConfigurationDetails.css */
-
 .container {
-    border: 1px solid #e2e8f0; /* Entspricht border in Tailwind */
-    border-radius: 0.5rem; /* Entspricht rounded-lg in Tailwind */
-    padding: 1rem; /* Entspricht p-4 in Tailwind */
-  }
-  
-  .title {
-    font-size: 1.125rem; /* Entspricht text-lg in Tailwind */
-    font-weight: 600; /* Entspricht font-semibold in Tailwind */
-    margin-bottom: 1rem; /* Entspricht mb-4 in Tailwind */
-  }
-  
-  .subtitle {
-    font-size: 1rem; /* Entspricht text-md in Tailwind */
-    font-weight: 500; /* Entspricht font-medium in Tailwind */
-    margin-bottom: 0.5rem; /* Entspricht mb-2 in Tailwind */
-  }
-  
-  .device-list {
-    display: grid;
-    gap: 0.5rem; /* Entspricht gap-2 in Tailwind */
-    max-height: 10rem; /* Entspricht max-h-40 in Tailwind */
-    overflow-y: auto;
-  }
-  
-  .device-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem; /* Entspricht gap-2 in Tailwind */
-    font-size: 0.875rem; /* Entspricht text-sm in Tailwind */
-  }
-  
-  .device-id {
-    color: #6b7280; /* Entspricht text-gray-500 in Tailwind */
-    font-size: 0.75rem; /* Entspricht text-xs in Tailwind */
-  }
-  
-  .thermostat-settings {
-    margin-bottom: 1.5rem; /* Entspricht mb-6 in Tailwind */
-    padding: 0.75rem; /* Entspricht p-3 in Tailwind */
-    background-color: #f9fafb; /* Entspricht bg-gray-50 in Tailwind */
-    border-radius: 0.375rem; /* Entspricht rounded in Tailwind */
-  }
-  
-  .thermostat-title {
-    font-weight: 500; /* Entspricht font-medium in Tailwind */
-    font-size: 0.875rem; /* Entspricht text-sm in Tailwind */
-    margin-bottom: 0.5rem; /* Entspricht mb-2 in Tailwind */
-  }
-  
-  .input-group {
-    display: grid;
-    gap: 0.75rem; /* Entspricht gap-3 in Tailwind */
-  }
-  
-  .input-label {
-    font-size: 0.875rem; /* Entspricht text-sm in Tailwind */
-  }
-  
-  .input-field {
-    margin-left: 0.5rem; /* Entspricht ml-2 in Tailwind */
-    padding: 0.25rem; /* Entspricht p-1 in Tailwind */
-    border: 1px solid #e2e8f0; /* Entspricht border in Tailwind */
-    border-radius: 0.25rem; /* Entspricht rounded in Tailwind */
-    width: 5rem; /* Entspricht w-20 in Tailwind */
-  }
-  
-  .button-group {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem; /* Entspricht gap-3 in Tailwind */
-  }
-  
-  .button {
-    padding: 0.5rem 1rem; /* Entspricht px-4 py-2 in Tailwind */
-    border-radius: 0.25rem; /* Entspricht rounded in Tailwind */
-    cursor: pointer;
-  }
-  
-  .button-cancel {
-    border: 1px solid #e2e8f0; /* Entspricht border in Tailwind */
-  }
-  
-  .button-cancel:hover {
-    background-color: #f7fafc; /* Entspricht hover:bg-gray-100 in Tailwind */
-  }
-  
-  .button-save {
-    background-color: #3b82f6; /* Entspricht bg-blue-500 in Tailwind */
-    color: white;
-  }
-  
-  .button-save:hover {
-    background-color: #2563eb; /* Entspricht hover:bg-blue-600 in Tailwind */
-  }
-  
-  .button-save:disabled {
-    background-color: #93c5fd; /* Entspricht disabled:bg-blue-300 in Tailwind */
-    cursor: not-allowed;
-  }
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.smart-home-title {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1a202c;
+  text-align: center;
+}
+
+.room-edit-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  color: #2d3748;
+  text-align: center;
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  color: #2d3748;
+}
+
+.device-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.device-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.device-item:hover {
+  background-color: #edf2f7;
+}
+
+.device-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.25rem;
+  border: 1px solid #cbd5e0;
+}
+
+.device-type {
+  font-size: 0.875rem;
+  color: #4a5568;
+}
+
+.device-id {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.thermostat-settings {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+}
+
+.thermostat-title {
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #2d3748;
+}
+
+.input-group {
+  display: grid;
+  gap: 1rem;
+}
+
+.input-label {
+  font-size: 0.875rem;
+  color: #4a5568;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-field {
+  padding: 0.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.25rem;
+  width: 6rem;
+  text-align: center;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #63b3ed;
+  box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.3);
+}
+
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button-cancel {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e0;
+  color: #4a5568;
+}
+
+.button-cancel:hover {
+  background-color: #f7fafc;
+}
+
+.button-save {
+  background-color: #4299e1;
+  color: #ffffff;
+  border: none;
+}
+
+.button-save:hover {
+  background-color: #3182ce;
+}
+
+.button-save:disabled {
+  background-color: #a0aec0;
+  cursor: not-allowed;
+}

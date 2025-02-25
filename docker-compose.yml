@@ -41,32 +41,32 @@ services:
       - smarthome
       - mosquitto
 
-  thermostat2:
-    build: ./thermostat
-    environment:
-      - DEVICE_ID=thermostat_2
-      - PORT=3012
-    depends_on:
-      - smarthome
-      - mosquitto
+  #thermostat2:
+  #  build: ./thermostat
+  #  environment:
+  #    - DEVICE_ID=thermostat_2
+  #    - PORT=3012
+  #  depends_on:
+  #    - smarthome
+  #    - mosquitto
 
-  thermostat3:
-    build: ./thermostat
-    environment:
-      - DEVICE_ID=thermostat_3
-      - PORT=3022
-    depends_on:
-      - smarthome
-      - mosquitto
+  #thermostat3:
+  #  build: ./thermostat
+  #  environment:
+  #    - DEVICE_ID=thermostat_3
+  #    - PORT=3022
+  #  depends_on:
+  #    - smarthome
+  #    - mosquitto
 
-  thermostat4:
-    build: ./thermostat
-    environment:
-      - DEVICE_ID=thermostat_4
-      - PORT=3032
-    depends_on:
-      - smarthome
-      - mosquitto
+  #thermostat4:
+  #  build: ./thermostat
+  #  environment:
+  #    - DEVICE_ID=thermostat_4
+  #    - PORT=3032
+  #  depends_on:
+  #   - smarthome
+  #    - mosquitto
 
   webinterface:
     build: ./webinterface

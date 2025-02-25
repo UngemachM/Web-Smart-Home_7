@@ -14,37 +14,39 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [devicesRes, roomsRes] = await Promise.all([
-          axios.get('http://localhost:3000/devices'),
-          axios.get('http://localhost:3000/rooms')
-        ]);
+  // Update the useEffect for data fetching
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const [devicesRes, roomsRes] = await Promise.all([
+        axios.get('http://localhost:3000/devices'),
+        axios.get('http://localhost:3000/rooms')
+      ]);
+      
+      const sortedDevices = devicesRes.data.sort((a, b) => {
+        const aNum = parseInt(a.id.split('_')[1]);
+        const bNum = parseInt(b.id.split('_')[1]);
         
-        const sortedDevices = devicesRes.data.sort((a, b) => {
-          const aNum = parseInt(a.id.split('_')[1]);
-          const bNum = parseInt(b.id.split('_')[1]);
-          
-          if (a.type !== b.type) {
-            return a.type === 'fensterkontakt' ? -1 : 1;
-          }
-          return aNum - bNum;
-        });
-        
-        setDevices(sortedDevices);
-        setRooms(roomsRes.data);
-        setError(null);
-      } catch (err) {
-        console.error('Fehler beim Abrufen der Daten:', err);
-        setError('Fehler beim Laden der Daten');
-      }
-    };
+        if (a.type !== b.type) {
+          return a.type === 'fensterkontakt' ? -1 : 1;
+        }
+        return aNum - bNum;
+      });
+      
+      // Set devices - server should now correctly track status changes
+      setDevices(sortedDevices);
+      setRooms(roomsRes.data);
+      setError(null);
+    } catch (err) {
+      console.error('Fehler beim Abrufen der Daten:', err);
+      setError('Fehler beim Laden der Daten');
+    }
+  };
 
-    fetchData();
-    const interval = setInterval(fetchData, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  fetchData();
+  const interval = setInterval(fetchData, 5000);
+  return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -53,7 +55,7 @@ function App() {
         message: location.state.message,
         type: location.state.type
       });
-      setTimeout(() => setNotification(null), 3000);
+      setTimeout(() => setNotification(null), 30000);
     }
   }, [location]);
 
@@ -85,6 +87,49 @@ function App() {
     }
   };
 
+  const handleWindowStatusChange = async (deviceId, newStatus) => {
+    try {
+      console.log(`Sende Status-Änderung für ${deviceId} auf ${newStatus}`);
+      
+      // Update local state optimistically
+      setDevices(prevDevices => prevDevices.map(device => 
+        device.id === deviceId 
+          ? { ...device, status: newStatus } 
+          : device
+      ));
+      
+      const response = await axios.post('http://localhost:3000/device/status', {
+        deviceId: deviceId,
+        status: newStatus
+      });
+      
+      if (response.data.success) {
+        setNotification({
+          message: `Fensterstatus auf "${newStatus}" geändert!`,
+          type: 'success'
+        });
+      } else {
+        throw new Error(response.data.error || 'Unbekannter Fehler');
+      }
+    } catch (err) {
+      console.error('Fehler beim Ändern des Fensterstatus:', err);
+      
+      // Revert local state on error - get the opposite of what we tried to set
+      setDevices(prevDevices => prevDevices.map(device => 
+        device.id === deviceId 
+          ? { ...device, status: newStatus === 'closed' ? 'open' : 'closed' } 
+          : device
+      ));
+      
+      // Detaillierte Fehlermeldung anzeigen
+      const errorMessage = err.response?.data?.error || err.message || 'Fehler beim Ändern des Fensterstatus';
+      setError(errorMessage);
+      
+      // Fehlermeldung nach 5 Sekunden ausblenden
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
   const handleShutdown = async () => {
     if (window.confirm('Möchten Sie das System wirklich beenden?')) {
       try {
@@ -109,8 +154,16 @@ function App() {
               <div className="font-bold capitalize">{device.type}</div>
               <div className="text-gray-600">ID: {device.id}</div>
               {device.type === 'fensterkontakt' && (
-                <div className="text-sm text-gray-600">
-                  Status: {device.status}
+                <div className="flex justify-between items-center mt-2">
+                  <div className="text-sm text-gray-600">
+                    Status: <span className={`font-medium ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>{device.status}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open')}
+                    className={`button small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
+                  >
+                    {device.status === 'open' ? 'Fenster schließen' : 'Fenster öffnen'}
+                  </button>
                 </div>
               )}
             </div>
@@ -175,12 +228,27 @@ function App() {
                 {room.devices?.map(deviceId => {
                   const device = devices.find(d => d.id === deviceId);
                   return device ? (
-                    <li key={deviceId}>
-                      {device.type}: {deviceId}
-                      {device.type === 'thermostat' && (
-                        <span className="ml-2 text-gray-600">
-                          (Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C)
-                        </span>
+                    <li key={deviceId} className="flex justify-between items-center py-1">
+                      <div>
+                        {device.type}: {deviceId}
+                        {device.type === 'thermostat' && (
+                          <span className="ml-2 text-gray-600">
+                            (Aktuell: {device.currentTemp}°C, Ziel: {device.targetTemp}°C)
+                          </span>
+                        )}
+                        {device.type === 'fensterkontakt' && (
+                          <span className={`ml-2 ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>
+                            ({device.status})
+                          </span>
+                        )}
+                      </div>
+                      {device.type === 'fensterkontakt' && (
+                        <button 
+                          onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open')}
+                          className={`button extra-small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
+                        >
+                          {device.status === 'open' ? 'Schließen' : 'Öffnen'}
+                        </button>
                       )}
                     </li>
                   ) : null;

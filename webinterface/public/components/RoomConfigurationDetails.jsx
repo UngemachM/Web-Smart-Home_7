@@ -42,10 +42,11 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
 
   return (
     <div className="container">
-      <h3 className="title">{room.name}</h3>
+      <h1 className="smart-home-title">Smart Home</h1>
+      <h2 className="room-edit-title">Raumname Bearbeiten: {room.name}</h2>
       
-      <div className="thermostat-settings">
-        <h4 className="subtitle">Geräte auswählen:</h4>
+      <div className="section">
+        <h3 className="section-title">Geräte auswählen</h3>
         <div className="device-list">
           {devices.map(device => (
             <label key={device.id} className="device-item">
@@ -59,17 +60,17 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                     setSelectedDevices([...selectedDevices, device.id]);
                   }
                 }}
-                className="rounded"
+                className="device-checkbox"
               />
-              <span className="capitalize">{device.type}</span>
+              <span className="device-type">{device.type}</span>
               <span className="device-id">({device.id})</span>
             </label>
           ))}
         </div>
       </div>
 
-      <div className="thermostat-settings">
-        <h4 className="subtitle">Temperatureinstellungen:</h4>
+      <div className="section">
+        <h3 className="section-title">Temperatureinstellungen</h3>
         {devices
           .filter(device => 
             device.type === 'thermostat' && 
@@ -77,9 +78,7 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
           )
           .map(thermostat => (
             <div key={thermostat.id} className="thermostat-settings">
-              <h5 className="thermostat-title">
-                Thermostat: {thermostat.id}
-              </h5>
+              <h4 className="thermostat-title">Thermostat: {thermostat.id}</h4>
               <div className="input-group">
                 <label className="input-label">
                   Raumtemperatur:
