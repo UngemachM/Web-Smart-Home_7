@@ -14,8 +14,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Update the useEffect for data fetching
-useEffect(() => {
+  // fetchData außerhalb des useEffect definieren, damit sie von anderen Funktionen aufgerufen werden kann
   const fetchData = async () => {
     try {
       const [devicesRes, roomsRes] = await Promise.all([
@@ -33,9 +32,19 @@ useEffect(() => {
         return aNum - bNum;
       });
       
-      // Set devices - server should now correctly track status changes
-      setDevices(sortedDevices);
-      setRooms(roomsRes.data);
+      // Prüfe, ob die Daten tatsächlich anders sind, bevor ein Update durchgeführt wird
+      const devicesChanged = JSON.stringify(sortedDevices) !== JSON.stringify(devices);
+      const roomsChanged = JSON.stringify(roomsRes.data) !== JSON.stringify(rooms);
+      
+      // Nur aktualisieren, wenn sich etwas geändert hat
+      if (devicesChanged) {
+        setDevices(sortedDevices);
+      }
+      
+      if (roomsChanged) {
+        setRooms(roomsRes.data);
+      }
+      
       setError(null);
     } catch (err) {
       console.error('Fehler beim Abrufen der Daten:', err);
@@ -43,10 +52,12 @@ useEffect(() => {
     }
   };
 
-  fetchData();
-  const interval = setInterval(fetchData, 5000);
-  return () => clearInterval(interval);
-}, []);
+  // Ändere deinen existierenden useEffect für das Daten-Fetching
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (location.state?.message) {
@@ -108,6 +119,12 @@ useEffect(() => {
           message: `Fensterstatus auf "${newStatus}" geändert!`,
           type: 'success'
         });
+        
+        // Warte kurz und lade dann die Daten neu
+        setTimeout(() => {
+          fetchData();
+        }, 1000); // 1 Sekunde Verzögerung
+        
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
@@ -162,6 +179,12 @@ useEffect(() => {
           message: `Thermostat-Status aktualisiert!`,
           type: 'success'
         });
+        
+        // Auch hier nach einer erfolgreichen Thermostat-Änderung die Daten neu laden
+        setTimeout(() => {
+          fetchData();
+        }, 250);
+        
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
@@ -171,6 +194,8 @@ useEffect(() => {
       setTimeout(() => setError(null), 5000);
     }
   };
+
+  
 
   const DashboardContent = () => (
     <>
@@ -265,18 +290,6 @@ useEffect(() => {
     <div className="text-sm text-gray-600">
       Aktuell: {device.currentTemp}°C
     </div>
-    <button 
-      onClick={() => handleThermostatStatusChange(device.id, device.currentTemp, device.targetTemp + 1)}
-      className="button small"
-    >
-      Zieltemperatur erhöhen
-    </button>
-    <button 
-      onClick={() => handleThermostatStatusChange(device.id, device.currentTemp, device.targetTemp - 1)}
-      className="button small"
-    >
-      Zieltemperatur verringern
-    </button>
   </div>
 )}
                         {device.type === 'fensterkontakt' && (

@@ -23,14 +23,14 @@ services:
       - smarthome
       - mosquitto
 
-  # fensterkontakt2:
-  #   build: ./fensterkontakt
-  #   environment:
-  #     - DEVICE_ID=fensterkontakt_2
-  #     - PORT=3011
-  #   depends_on:
-  #     - smarthome
-  #     - mosquitto
+  fensterkontakt2:
+    build: ./fensterkontakt
+    environment:
+       - DEVICE_ID=fensterkontakt_2
+       - PORT=3011
+    depends_on:
+       - smarthome
+       - mosquitto
 
   thermostat1:
     build: ./thermostat

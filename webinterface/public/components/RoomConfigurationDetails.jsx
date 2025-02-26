@@ -16,6 +16,35 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
   );
   const [isSaving, setIsSaving] = useState(false);
 
+  // Funktion zur Auswahl eines Geräts
+  const handleDeviceSelection = (deviceId, deviceType) => {
+    if (deviceType === 'fensterkontakt') {
+      // Wenn ein Fensterkontakt ausgewählt wird, prüfen, ob bereits ein Fensterkontakt ausgewählt ist
+      const hasSelectedWindow = selectedDevices.some(id => {
+        const device = devices.find(d => d.id === id);
+        return device?.type === 'fensterkontakt';
+      });
+
+      if (hasSelectedWindow) {
+        // Wenn bereits ein Fensterkontakt ausgewählt ist, entferne den aktuellen Fensterkontakt
+        setSelectedDevices(selectedDevices.filter(id => {
+          const device = devices.find(d => d.id === id);
+          return device?.type !== 'fensterkontakt';
+        }));
+      }
+
+      // Füge den neuen Fensterkontakt hinzu
+      setSelectedDevices(prev => [...prev, deviceId]);
+    } else {
+      // Für andere Gerätetypen (z.B. Thermostat) normale Auswahl logik
+      if (selectedDevices.includes(deviceId)) {
+        setSelectedDevices(selectedDevices.filter(id => id !== deviceId));
+      } else {
+        setSelectedDevices([...selectedDevices, deviceId]);
+      }
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -53,14 +82,15 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
               <input
                 type="checkbox"
                 checked={selectedDevices.includes(device.id)}
-                onChange={() => {
-                  if (selectedDevices.includes(device.id)) {
-                    setSelectedDevices(selectedDevices.filter(id => id !== device.id));
-                  } else {
-                    setSelectedDevices([...selectedDevices, device.id]);
-                  }
-                }}
+                onChange={() => handleDeviceSelection(device.id, device.type)}
                 className="device-checkbox"
+                disabled={
+                  device.type === 'fensterkontakt' &&
+                  selectedDevices.some(id => {
+                    const selectedDevice = devices.find(d => d.id === id);
+                    return selectedDevice?.type === 'fensterkontakt' && selectedDevice.id !== device.id;
+                  })
+                }
               />
               <span className="device-type">{device.type}</span>
               <span className="device-id">({device.id})</span>
