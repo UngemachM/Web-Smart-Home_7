@@ -57,6 +57,35 @@ mqttClient.on('connect', () => {
 
 });
 
+// mqttClient.on('message', (topic, message) => {
+//   if (topic === 'smarthome/register') {
+//     const device = JSON.parse(message.toString());
+//     registeredDevices.set(device.id, device);
+//     console.log('Neues Gerät registriert:', device);
+//   } else if (topic.startsWith('smarthome/device/') && topic.endsWith('/status')) {
+//     const deviceId = topic.split('/')[2];
+//     const statusData = JSON.parse(message.toString());
+
+//     if (registeredDevices.has(deviceId)) {
+//       const device = registeredDevices.get(deviceId);
+//       if (device.type === 'thermostat') {
+//         device.currentTemp = statusData.currentTemp;
+//         device.targetTemp = statusData.targetTemp;
+        
+//         // **Hier die neue Konsolenausgabe für Temperatur-Updates**
+//         console.log(`🔵 Temperatur-Update für ${deviceId}:`);
+//         console.log(`🌡️ Aktuelle Temperatur: ${statusData.currentTemp}°C`);
+//         console.log(`🎯 Zieltemperatur: ${statusData.targetTemp}°C`);
+//       } else {
+//         device.status = statusData.status;
+//       }
+//       registeredDevices.set(deviceId, device);
+//       console.log(`Status für Gerät ${deviceId} aktualisiert:`, device);
+//     }
+//   }
+// });
+
+//Ersetzung des auskommentierten von hier...
 mqttClient.on('message', (topic, message) => {
   if (topic === 'smarthome/register') {
     const device = JSON.parse(message.toString());
@@ -72,19 +101,44 @@ mqttClient.on('message', (topic, message) => {
         device.currentTemp = statusData.currentTemp;
         device.targetTemp = statusData.targetTemp;
         
-        // **Hier die neue Konsolenausgabe für Temperatur-Updates**
-        console.log(`🔵 Temperatur-Update für ${deviceId}:`);
-        console.log(`🌡️ Aktuelle Temperatur: ${statusData.currentTemp}°C`);
-        console.log(`🎯 Zieltemperatur: ${statusData.targetTemp}°C`);
+        console.log(`Temperatur-Update für ${deviceId}:`);
+        console.log(`Aktuelle Temperatur: ${statusData.currentTemp}°C`);
+        console.log(`Zieltemperatur: ${statusData.targetTemp}°C`);
       } else {
         device.status = statusData.status;
       }
       registeredDevices.set(deviceId, device);
       console.log(`Status für Gerät ${deviceId} aktualisiert:`, device);
     }
+  } else if (topic === 'smarthome/updates') {
+    // Hier die Updates von 'smarthome/updates' verarbeiten
+    try {
+      const updateData = JSON.parse(message.toString());
+      const deviceId = updateData.id;
+      
+      if (registeredDevices.has(deviceId)) {
+        const device = registeredDevices.get(deviceId);
+        
+        // Gerätedaten basierend auf dem Update aktualisieren
+        if (updateData.type === 'thermostat') {
+          device.currentTemp = updateData.currentTemp;
+          device.targetTemp = updateData.targetTemp;
+          console.log(`Temperatur-Update über smarthome/updates für ${deviceId}:`);
+          console.log(`Aktuelle Temperatur: ${updateData.currentTemp}°C`);
+          console.log(`Zieltemperatur: ${updateData.targetTemp}°C`);
+        } else if (updateData.type === 'fensterkontakt') {
+          device.status = updateData.status;
+          console.log(`Fensterstatus-Update für ${deviceId}: ${updateData.status}`);
+        }
+        
+        registeredDevices.set(deviceId, device);
+      }
+    } catch (error) {
+      console.error('Fehler beim Verarbeiten des MQTT-Updates:', error);
+    }
   }
 });
-
+//...bis hier
 
 fastify.listen({ port: 3000, host: '0.0.0.0' }, (err) => {
   if (err) {
