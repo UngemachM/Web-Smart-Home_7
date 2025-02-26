@@ -59,14 +59,14 @@ services:
      - smarthome
      - mosquitto
 
-  # thermostat4:
-  #  build: ./thermostat
-  #  environment:
-  #    - DEVICE_ID=thermostat_4
-  #    - PORT=3032
-  #  depends_on:
-  #   - smarthome
-  #    - mosquitto
+  thermostat4:
+   build: ./thermostat
+   environment:
+     - DEVICE_ID=thermostat_4
+     - PORT=3032
+   depends_on:
+    - smarthome
+    - mosquitto
 
   webinterface:
     build: ./webinterface
