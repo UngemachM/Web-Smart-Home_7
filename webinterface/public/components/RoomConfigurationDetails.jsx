@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './RoomConfigurationDetails.css';
 import axios from 'axios';
 
-function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
+function RoomConfigurationDetails({ room, devices, onSave, onCancel, fetchData }) {
   const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
   const [thermostatsSettings, setThermostatsSettings] = useState(
     devices
@@ -57,13 +57,32 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
           ])
         )
       };
+
+      // Raum speichern
       await onSave(updatedRoom);
-  
+
+      // Thermostat-Einstellungen an das Backend senden
       await axios.post('http://localhost:3000/thermostats/settings', {
         thermostats: updatedRoom.thermostats
       });
+
+      // Sende die neuen Temperaturen über MQTT
+      if (mqttClient) {
+        Object.entries(updatedRoom.thermostats).forEach(([deviceId, settings]) => {
+          mqttClient.publish(`smarthome/thermostat/${deviceId}/setTemp`, JSON.stringify({
+            roomTemp: settings.roomTemp,
+            absenkTemp: settings.absenkTemp
+          }));
+        });
+      }
+
+      setNotification({
+        message: 'Raum erfolgreich gespeichert!',
+        type: 'success'
+      });
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
+      setError('Fehler beim Speichern des Raums');
     } finally {
       setIsSaving(false);
     }

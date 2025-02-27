@@ -98,12 +98,14 @@ function App() {
     try {
       console.log(`Sende Status-Änderung für ${deviceId} auf ${newStatus} mit Zieltemperatur ${targetTemp}`);
       
+      // Fensterstatus im Frontend aktualisieren
       setDevices(prevDevices => prevDevices.map(device => 
         device.id === deviceId 
           ? { ...device, status: newStatus } 
           : device
       ));
       
+      // Fensterstatus an das Backend senden
       const response = await axios.post('http://localhost:3000/device/status', {
         deviceId: deviceId,
         status: newStatus,
@@ -116,6 +118,20 @@ function App() {
           type: 'success'
         });
         
+        // Thermostate im Raum aktualisieren
+        const room = rooms.find(room => room.devices.includes(deviceId));
+        if (room) {
+          room.devices.forEach(deviceId => {
+            const device = devices.find(d => d.id === deviceId);
+            if (device && device.type === 'thermostat') {
+              // Temperatur basierend auf dem Fensterstatus aktualisieren
+              const newTemp = newStatus === 'closed' ? targetTemp : device.absenkTemp;
+              handleThermostatStatusChange(deviceId, newTemp, targetTemp);
+            }
+          });
+        }
+        
+        // Daten nach 1 Sekunde neu laden
         setTimeout(() => {
           fetchData();
         }, 1000);
@@ -125,6 +141,7 @@ function App() {
     } catch (err) {
       console.error('Fehler beim Ändern des Fensterstatus:', err);
       
+      // Fensterstatus im Frontend zurücksetzen
       setDevices(prevDevices => prevDevices.map(device => 
         device.id === deviceId 
           ? { ...device, status: newStatus === 'closed' ? 'open' : 'closed' } 
@@ -151,168 +168,168 @@ function App() {
     }
   };
 
-  const handleThermostatStatusChange = async (deviceId, currentTemp, targetTemp) => {
-    try {
-      setDevices(prevDevices => prevDevices.map(device => 
-        device.id === deviceId 
-          ? { ...device, currentTemp: currentTemp, targetTemp: targetTemp } 
-          : device
-      ));
-      
-      const response = await axios.post('http://localhost:3000/device/thermostat/status', {
-        deviceId: deviceId,
-        currentTemp: currentTemp,
-        targetTemp: targetTemp
+const handleThermostatStatusChange = async (deviceId, currentTemp, targetTemp) => {
+  try {
+    // Aktualisiere die Temperatur im Frontend
+    setDevices(prevDevices => prevDevices.map(device => 
+      device.id === deviceId 
+        ? { ...device, currentTemp: currentTemp, targetTemp: targetTemp } 
+        : device
+    ));
+    
+    // Sende die Änderungen an das Backend
+    const response = await axios.post('http://localhost:3000/device/thermostat/status', {
+      deviceId: deviceId,
+      currentTemp: currentTemp,
+      targetTemp: targetTemp
+    });
+    
+    if (response.data.success) {
+      setNotification({
+        message: `Thermostat-Status aktualisiert!`,
+        type: 'success'
       });
       
-      if (response.data.success) {
-        setNotification({
-          message: `Thermostat-Status aktualisiert!`,
-          type: 'success'
-        });
-        
-        setTimeout(() => {
-          fetchData();
-        }, 250);
-      } else {
-        throw new Error(response.data.error || 'Unbekannter Fehler');
-      }
-    } catch (err) {
-      console.error('Fehler beim Ändern des Thermostat-Status:', err);
-      setError(err.response?.data?.error || err.message || 'Fehler beim Ändern des Thermostat-Status');
-      setTimeout(() => setError(null), 5000);
+      // Daten nach 250 ms neu laden
+      setTimeout(() => {
+        fetchData();
+      }, 250);
+    } else {
+      throw new Error(response.data.error || 'Unbekannter Fehler');
     }
-  };
+  } catch (err) {
+    console.error('Fehler beim Ändern des Thermostat-Status:', err);
+    setError(err.response?.data?.error || err.message || 'Fehler beim Ändern des Thermostat-Status');
+    setTimeout(() => setError(null), 5000);
+  }
+};
 
-  const DashboardContent = () => (
-    <>
-      <div className="mb-6">
-        <h2 className="text-xl mb-4">Registrierte Geräte:</h2>
-        <div className="space-y-2">
-          {devices.map(device => (
-            <div key={device.id} className="device-card">
-              <div className="font-bold capitalize">{device.type}</div>
-              <div className="text-gray-600">ID: {device.id}</div>
-              {device.type === 'fensterkontakt' && (
-                <div className="flex justify-between items-center mt-2">
-                  <div className="text-sm text-gray-600">
-                    Status: <span className={`font-medium ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>{device.status}</span>
+  const DashboardContent = () => {
+    if (!rooms || !devices) {
+      return <div>Lade Daten...</div>; // Fallback, während Daten geladen werden
+    }
+  
+    return (
+      <>
+        <div className="mb-6">
+          <h2 className="text-xl mb-4">Registrierte Geräte:</h2>
+          <div className="space-y-2">
+            {devices.map(device => (
+              <div key={device.id} className="device-card">
+                <div className="font-bold capitalize">{device.type}</div>
+                <div className="text-gray-600">ID: {device.id}</div>
+                {device.type === 'fensterkontakt' && (
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-sm text-gray-600">
+                      Status: <span className={`font-medium ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>{device.status}</span>
+                    </div>
+                    <button 
+                      onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
+                      className={`button small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
+                    >
+                      {device.status === 'open' ? 'Fenster schließen' : 'Fenster öffnen'}
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
-                    className={`button small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+  
+        {error && (
+          <div className="notification error">
+            {error}
+          </div>
+        )}
+  
+        {notification && (
+          <div className={`notification ${notification.type === 'success' ? 'success' : 'error'}`}>
+            {notification.message}
+          </div>
+        )}
+  
+        <form onSubmit={handleCreateRoom} className="mb-6">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              placeholder="Neuen Raum anlegen..."
+              className="input"
+              autoFocus
+            />
+            <button 
+              type="submit"
+              className="button primary"
+            >
+              Raum anlegen
+            </button>
+          </div>
+        </form>
+  
+        <div className="grid gap-4">
+          {rooms.map(room => (
+            <div key={room.id} className="room-card">
+              <div className="flex justify-between items-center">
+                <h3 className="font-bold">{room.name}</h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/configure-room/${room.id}`)}
+                    className="button edit"
                   >
-                    {device.status === 'open' ? 'Fenster schließen' : 'Fenster öffnen'}
+                    Bearbeiten
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRoom(room.id)}
+                    className="button delete"
+                  >
+                    Löschen
                   </button>
                 </div>
-              )}
+              </div>
+              <div className="mt-2">
+                <h4 className="text-sm font-medium">Zugewiesene Geräte:</h4>
+                <ul className="text-sm text-gray-600">
+                  {room.devices?.map(deviceId => {
+                    const device = devices.find(d => d.id === deviceId);
+                    return device ? (
+                      <li key={deviceId} className="flex justify-between items-center py-1">
+                        <div>
+                          {device.type}: {deviceId}
+                          {device.type === 'thermostat' && (
+                            <div className="flex justify-between items-center mt-2">
+                              <div className="text-sm text-gray-600">
+                                <span className="ml-2 text-gray-600">
+                                  (Aktuell: {device.currentTemp}°C)
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          {device.type === 'fensterkontakt' && (
+                            <span className={`ml-2 ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>
+                              ({device.status})
+                            </span>
+                          )}
+                        </div>
+                        {device.type === 'fensterkontakt' && (
+                          <button 
+                            onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
+                            className={`button extra-small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
+                          >
+                            {device.status === 'open' ? 'Schließen' : 'Öffnen'}
+                          </button>
+                        )}
+                      </li>
+                    ) : null;
+                  })}
+                </ul>
+              </div>
             </div>
           ))}
         </div>
-      </div>
-
-      {error && (
-        <div className="notification error">
-          {error}
-        </div>
-      )}
-
-      {notification && (
-        <div className={`notification ${notification.type === 'success' ? 'success' : 'error'}`}>
-          {notification.message}
-        </div>
-      )}
-
-      <form onSubmit={handleCreateRoom} className="mb-6">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            placeholder="Neuen Raum anlegen..."
-            className="input"
-            autoFocus
-          />
-          <button 
-            type="submit"
-            className="button primary"
-          >
-            Raum anlegen
-          </button>
-        </div>
-      </form>
-
-      <div className="grid gap-4">
-        {rooms.map(room => (
-          <div key={room.id} className="room-card">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold">{room.name}</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate(`/configure-room/${room.id}`)}
-                  className="button edit"
-                >
-                  Bearbeiten
-                </button>
-                <button
-                  onClick={() => handleDeleteRoom(room.id)}
-                  className="button delete"
-                >
-                  Löschen
-                </button>
-              </div>
-            </div>
-            <div className="mt-2">
-              <h4 className="text-sm font-medium">Zugewiesene Geräte:</h4>
-              <ul className="text-sm text-gray-600">
-                {room.devices?.map(deviceId => {
-                  const device = devices.find(d => d.id === deviceId);
-                  return device ? (
-                    <li key={deviceId} className="flex justify-between items-center py-1">
-                      <div>
-                        {device.type}: {deviceId}
-                        {device.type === 'thermostat' && (
-  <div className="flex justify-between items-center mt-2">
-    <div className="text-sm text-gray-600">
-      <span className="ml-2 text-gray-600">
-        (Aktuell: {room.thermostats?.[device.id]?.roomTemp || device.roomTemp}°C)
-      </span>
-    </div>
-  </div>
-)}
-                        {device.type === 'fensterkontakt' && (
-                          <span className={`ml-2 ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>
-                            ({device.status})
-                          </span>
-                        )}
-                      </div>
-                      {device.type === 'fensterkontakt' && (
-                        <button 
-                          onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
-                          className={`button extra-small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
-                        >
-                          {device.status === 'open' ? 'Schließen' : 'Öffnen'}
-                        </button>
-                      )}
-                    </li>
-                  ) : null;
-                })}
-              </ul>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 mb-4">
-        <button 
-          onClick={handleShutdown}
-          className="button shutdown"
-        >
-          System beenden
-        </button>
-      </div>
-    </>
-  );
+      </>
+    );
+  };
 
   return (
     <div className="container">

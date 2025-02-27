@@ -108,6 +108,7 @@ fastify.post('/thermostats/settings', async (request, reply) => {
         device.absenkTemp = settings.absenkTemp;
         registeredDevices.set(deviceId, device);
 
+        // Sende die neuen Temperaturen über MQTT
         mqttClient.publish(`smarthome/thermostat/${deviceId}/setTemp`, JSON.stringify({
           roomTemp: settings.roomTemp,
           absenkTemp: settings.absenkTemp

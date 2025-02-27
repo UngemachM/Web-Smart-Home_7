@@ -6,9 +6,9 @@ const port = process.env.PORT || 3002;
 const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 
 let currentSettings = {
-  currentTemp: 20,
+  currentTemp: 21,
   targetTemp: 21,
-  absenkTemp: 18
+  absenkTemp: 17
 };
 
 mqttClient.on('connect', () => {
@@ -54,6 +54,7 @@ mqttClient.on('message', (topic, message) => {
       console.log(`Neue Temperatureinstellungen für ${deviceId}:`, 
         { roomTemp, absenkTemp });
 
+      // Sende die aktualisierten Einstellungen an das Frontend
       mqttClient.publish('smarthome/updates', JSON.stringify({
         id: deviceId,
         type: 'thermostat',
@@ -76,6 +77,7 @@ mqttClient.on('message', (topic, message) => {
           console.log(`Fenster geöffnet. Temperatur auf Absenktemperatur gesetzt: ${currentSettings.absenkTemp}`);
         }
         
+        // Sende die aktualisierte Temperatur an das Frontend
         mqttClient.publish('smarthome/updates', JSON.stringify({
           id: deviceId,
           type: 'thermostat',
