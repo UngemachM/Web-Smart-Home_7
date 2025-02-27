@@ -51,11 +51,10 @@ services:
     volumes:
       - ./postgres:/app/postgres  # postgres hinzufügen
 
-
-  thermostat1:
-    build: ./thermostat
+  fensterkontakt2:
+    build: ./fensterkontakt
     environment:
-      - DEVICE_ID=thermostat_1
+      - DEVICE_ID=fensterkontakt_2
       - PORT=3002
     depends_on:
       - smarthome
@@ -63,14 +62,59 @@ services:
     volumes:
       - ./postgres:/app/postgres  # postgres hinzufügen
 
+
+  thermostat1:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_1
+      - PORT=3003
+    depends_on:
+      - smarthome
+      - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
+
+  thermostat2:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_2
+      - PORT=3004
+    depends_on:
+      - smarthome
+      - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
   
+  thermostat3:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_3
+      - PORT=3005
+    depends_on:
+      - smarthome
+      - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
+
+  thermostat4:
+    build: ./thermostat
+    environment:
+      - DEVICE_ID=thermostat_4
+      - PORT=3006
+    depends_on:
+      - smarthome
+      - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
+
+
 
   webinterface:
     build: ./webinterface
     ports:
       - "8080:8080"
     depends_on:
-      - smarthome
+    - smarthome
 
 volumes:
   postgres_data:
