@@ -144,6 +144,29 @@ mqttClient.on('message', async (topic, message) => {
     }
   }
 });
+fastify.get('/rooms/with-devices', async (request, reply) => {
+  try {
+    const roomsWithDevices = await dbService.getAllRoomsWithDevices();
+    return roomsWithDevices;
+  } catch (error) {
+    console.error('Error fetching rooms with devices:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+
+// Endpunkt zum Abrufen aller Geräte für einen bestimmten Raum
+fastify.get('/rooms/:id/devices', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    const devices = await dbService.getAllRoomsWithDevices();
+    console.log(devices)
+    return devices;
+  } catch (error) {
+    console.error(`Error fetching devices for room ${id}:`, error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
 
 // In server.js
 // Add this function to load all device statuses and room assignments on startup
@@ -198,6 +221,8 @@ async function initializeSystem() {
     console.error('Fehler bei der Systeminitialisierung:', error);
   }
 }
+
+
 
 
 

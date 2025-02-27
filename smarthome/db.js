@@ -59,9 +59,44 @@ module.exports = {
     return res.rows;
   },
   getRoomById: async (id) => {
-    const res = await client.query('SELECT * FROM rooms WHERE id = $1', [id]);
-    return res.rows[0]; // Gibt den Raum zurück, wenn er gefunden wurde, ansonsten null
+    const roomRes = await client.query('SELECT * FROM rooms WHERE id = $1', [id]);
+    
+    if (roomRes.rows.length === 0) {
+      return null;
+    }
+    
+    const room = roomRes.rows[0];
+    
+    // Geräte für diesen Raum abrufen
+    const devicesRes = await client.query('SELECT * FROM devices WHERE room_id = $1', [id]);
+    room.devices = devicesRes.rows.map(device => device.id);
+    
+    return room;
   },
+  getAllRoomsWithDevices: async () => {
+    // Rufe erst alle Räume ab
+    const roomsResult = await client.query('SELECT * FROM rooms');
+    const rooms = roomsResult.rows;
+    
+    // Für jeden Raum die zugewiesenen Geräte abrufen
+    for (const room of rooms) {
+      const devicesResult = await client.query('SELECT * FROM devices WHERE room_id = $1', [room.id]);
+      room.devices = devicesResult.rows.map(device => device.id);
+    }
+    
+    return rooms;
+  },
+  
+  // Funktion, um alle Geräte für einen bestimmten Raum abzurufen
+  getDevicesForRoom: async (roomId) => {
+    const res = await client.query(`
+      SELECT d.*, r.name AS room_name FROM devices d
+      LEFT JOIN rooms r ON d.room_id = r.id
+      WHERE d.room_id = $1
+    `, [roomId]);
+    return res.rows;
+},
+
   assignDeviceToRoom: async (deviceId, roomId) => {
     // Überprüfe, ob das Gerät existiert
     const deviceRes = await client.query('SELECT * FROM devices WHERE id = $1', [deviceId]);
