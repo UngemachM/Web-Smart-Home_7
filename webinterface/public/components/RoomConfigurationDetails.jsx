@@ -1,42 +1,74 @@
-import React, { useState } from 'react';
-import './RoomConfigurationDetails.css'; // Importiere die CSS-Datei
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import './RoomConfigurationDetails.css'; 
 
-function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
-  const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
-  const [thermostatsSettings, setThermostatsSettings] = useState(
-    devices
-      .filter(device => device.type === 'thermostat')
-      .reduce((acc, device) => ({
-        ...acc,
-        [device.id]: {
-          roomTemp: room.thermostats?.[device.id]?.roomTemp || device.roomTemp || 21,
-          absenkTemp: room.thermostats?.[device.id]?.absenkTemp || device.absenkTemp || 17
-        }
-      }), {})
-  );
+function RoomConfigurationDetails() {
+  const { roomId } = useParams();
+  const navigate = useNavigate();
+  const [room, setRoom] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedDevices, setSelectedDevices] = useState([]);
+  const [thermostatsSettings, setThermostatsSettings] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Funktion zur Auswahl eines Geräts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [roomsRes, devicesRes] = await Promise.all([
+          axios.get('http://localhost:3000/rooms'),
+          axios.get('http://localhost:3000/devices')
+        ]);
+        
+        const currentRoom = roomsRes.data.find(r => r.id.toString() === roomId.toString());
+        
+        if (!currentRoom) {
+          throw new Error('Raum nicht gefunden');
+        }
+        
+        setRoom(currentRoom);
+        setDevices(devicesRes.data);
+        
+        if (currentRoom.devices) {
+          setSelectedDevices(currentRoom.devices);
+        }
+        
+        const thermostatSettings = {};
+        devicesRes.data.filter(device => device.type === 'thermostat').forEach(device => {
+          thermostatSettings[device.id] = {
+            roomTemp: currentRoom.thermostats?.[device.id]?.roomTemp || device.roomTemp || 21,
+            absenkTemp: currentRoom.thermostats?.[device.id]?.absenkTemp || device.absenkTemp || 17
+          };
+        });
+        
+        setThermostatsSettings(thermostatSettings);
+        setLoading(false);
+      } catch (err) {
+        setError('Fehler beim Laden der Daten');
+        setLoading(false);
+      }
+    };
+    
+    fetchData();
+  }, [roomId]);
+
   const handleDeviceSelection = (deviceId, deviceType) => {
     if (deviceType === 'fensterkontakt') {
-      // Wenn ein Fensterkontakt ausgewählt wird, prüfen, ob bereits ein Fensterkontakt ausgewählt ist
       const hasSelectedWindow = selectedDevices.some(id => {
         const device = devices.find(d => d.id === id);
         return device?.type === 'fensterkontakt';
       });
 
       if (hasSelectedWindow) {
-        // Wenn bereits ein Fensterkontakt ausgewählt ist, entferne den aktuellen Fensterkontakt
         setSelectedDevices(selectedDevices.filter(id => {
           const device = devices.find(d => d.id === id);
           return device?.type !== 'fensterkontakt';
         }));
       }
-
-      // Füge den neuen Fensterkontakt hinzu
       setSelectedDevices(prev => [...prev, deviceId]);
     } else {
-      // Für andere Gerätetypen (z.B. Thermostat) normale Auswahl logik
       if (selectedDevices.includes(deviceId)) {
         setSelectedDevices(selectedDevices.filter(id => id !== deviceId));
       } else {
@@ -61,13 +93,39 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
           ])
         )
       };
-      await onSave(updatedRoom);
+      
+      await axios.put(`http://localhost:3000/rooms/${roomId}/devices`, {
+        deviceIds: selectedDevices
+      });
+
+      navigate('/', {
+        state: {
+          message: 'Raum erfolgreich konfiguriert!',
+          type: 'success'
+        }
+      });
     } catch (error) {
-      console.error('Fehler beim Speichern:', error);
+      setError('Fehler beim Speichern der Konfiguration');
     } finally {
       setIsSaving(false);
     }
   };
+
+  const handleCancel = () => {
+    navigate('/');
+  };
+
+  if (loading) {
+    return <div className="container">Lädt Raumkonfiguration...</div>;
+  }
+
+  if (error) {
+    return <div className="container error">{error}</div>;
+  }
+
+  if (!room) {
+    return <div className="container error">Raum nicht gefunden</div>;
+  }
 
   return (
     <div className="container">
@@ -125,9 +183,10 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                         }
                       }));
                     }}
-                    className="input-field"
-                  /> °C
+                  />
                 </label>
+              </div>
+              <div className="input-group">
                 <label className="input-label">
                   Absenktemperatur:
                   <input
@@ -143,28 +202,18 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
                         }
                       }));
                     }}
-                    className="input-field"
-                  /> °C
+                  />
                 </label>
               </div>
             </div>
           ))}
       </div>
 
-      <div className="button-group">
-        <button
-          onClick={onCancel}
-          className="button button-cancel"
-        >
-          Abbrechen
+      <div className="actions">
+        <button onClick={handleSave} disabled={isSaving}>
+          {isSaving ? 'Speichern...' : 'Speichern'}
         </button>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="button button-save"
-        >
-          {isSaving ? 'Wird gespeichert...' : 'Speichern'}
-        </button>
+        <button onClick={handleCancel}>Abbrechen</button>
       </div>
     </div>
   );

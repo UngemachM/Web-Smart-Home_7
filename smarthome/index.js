@@ -54,8 +54,27 @@ fastify.get('/rooms', async (request, reply) => {
     return reply.code(500).send({ error: 'Database error' });
   }
 });
+// Raumdetails abrufen
+fastify.get('/rooms/:id', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    // Ruft den Raum mit der ID aus der Datenbank ab
+    const room = await dbService.getRoomById(id);
+    
+    if (!room) {
+      // Wenn der Raum nicht existiert, wird ein Fehler zurückgegeben
+      return reply.code(404).send({ error: 'Raum nicht gefunden' });
+    }
+    
+    // Gibt die Raumdaten zurück
+    return room;
+  } catch (error) {
+    console.error('Fehler beim Abrufen des Raums:', error);
+    return reply.code(500).send({ error: 'Datenbankfehler' });
+  }
+});
 
-// Neuen Raum hinzufügen
+
 fastify.post('/rooms', async (request, reply) => {
   const { name, floor } = request.body;
   if (!name) {
@@ -67,6 +86,18 @@ fastify.post('/rooms', async (request, reply) => {
   } catch (error) {
     console.error('Error adding room:', error);
     return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+mqttClient.on('message', async (topic, message) => {
+  if (topic === 'smarthome/register') {
+    try {
+      const device = JSON.parse(message.toString());
+      await dbService.registerDevice(device);
+      console.log('Neues Gerät registriert oder aktualisiert:', device);
+    } catch (error) {
+      console.error('Error registering device:', error);
+    }
   }
 });
 
@@ -172,24 +203,20 @@ async function initializeSystem() {
 
 // Endpunkt zum Zuweisen von Geräten zu einem Raum
 fastify.put('/rooms/:id/devices', async (request, reply) => {
-  const { id } = request.params;
-  const { deviceIds } = request.body;
+  const { id } = request.params; // Raum-ID
+  const { deviceIds } = request.body; // Array von Geräte-IDs
   
   if (!deviceIds || !Array.isArray(deviceIds)) {
     return reply.code(400).send({ error: 'deviceIds must be an array' });
   }
-  
+
   try {
-    await dbService.assignDevicesToRoom(id, deviceIds);
-    
-    // Optional: Lade den aktualisierten Raum
-    const room = await dbService.getRoomById(id);
-    const devices = await dbService.getDevicesByRoomId(id);
-    
-    return {
-      ...room,
-      devices: devices.map(d => d.id)
-    };
+    // Ändere den Raum für jedes Gerät
+    for (const deviceId of deviceIds) {
+      await dbService.assignDeviceToRoom(deviceId, id); // Raum-ID für jedes Gerät setzen
+    }
+
+    return { message: `Geräte wurden dem Raum mit ID ${id} zugewiesen` };
   } catch (error) {
     console.error('Error assigning devices to room:', error);
     return reply.code(500).send({ error: 'Database error' });
