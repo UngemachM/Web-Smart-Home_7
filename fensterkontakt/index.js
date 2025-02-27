@@ -1,55 +1,48 @@
 const fastify = require('fastify')();
 const mqtt = require('mqtt');
+const dbService = require('./db.js');
 
-// Konfiguration über Umgebungsvariablen
 const deviceId = process.env.DEVICE_ID || 'fensterkontakt_1';
 const port = process.env.PORT || 3001;
 const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 
-// Aktueller Status des Fensters
-
+let windowStatus = "closed";
 
 mqttClient.on('connect', () => {
   console.log(`Fensterkontakt ${deviceId} mit MQTT verbunden`);
-  let windowStatus = "closed";
-  
-  
-  // Registrierung des Geräts
   const registrationData = {
     id: deviceId,
     type: 'fensterkontakt',
     status: windowStatus
   };
   mqttClient.publish('smarthome/register', JSON.stringify(registrationData));
-  
-  // Subscribe auf Status-Änderungen für dieses Gerät
   mqttClient.subscribe(`smarthome/device/${deviceId}/status`);
 });
 
-// MQTT Message Handler
-mqttClient.on('message', (topic, message) => {
-  if (topic === `smarthome/device/${deviceId}/status`) {
+// In the event handler for MQTT window status
+mqttClient.on('message', async (topic, message) => {
+  if (topic.startsWith('smarthome/device/') && topic.endsWith('/status')) {
+    const deviceId = topic.split('/')[2];
+    const statusData = JSON.parse(message.toString());
     try {
-      const data = JSON.parse(message.toString());
-      if (data.status) {
-        windowStatus = data.status;
-        console.log(`Fensterstatus geändert auf: ${windowStatus}`);
-        console.log(windowStatus);
-        
-        // Status-Update an alle Clients senden
-        mqttClient.publish('smarthome/updates', JSON.stringify({
-          id: deviceId,
-          type: 'fensterkontakt',
-          status: windowStatus
-        }));
+      if (statusData.currentTemp !== undefined && statusData.targetTemp !== undefined) {
+        // Log to history table
+        await dbService.logThermostatStatus(deviceId, statusData.currentTemp, statusData.targetTemp);
+        // Update current status in devices table
+        await dbService.updateThermostatStatus(deviceId, statusData.currentTemp, statusData.targetTemp);
+      } else {
+        // Log to history table
+        await dbService.logDeviceStatus(deviceId, statusData.status);
+        // Update current status in devices table
+        await dbService.updateDeviceStatus(deviceId, statusData.status);
       }
-    } catch (err) {
-      console.error('Fehler beim Verarbeiten der MQTT-Nachricht:', err);
+    } catch (error) {
+      console.error(`Error updating status for device ${deviceId}:`, error);
     }
   }
 });
 
-// HTTP Endpunkte
+
 fastify.get('/', async (request, reply) => {
   reply.send({
     message: `Fensterkontakt ${deviceId} läuft!`,
@@ -57,8 +50,6 @@ fastify.get('/', async (request, reply) => {
   });
 });
 
-
-// Server starten
 fastify.listen({ port: port, host: '0.0.0.0' }, (err) => {
   if (err) {
     console.error(err);

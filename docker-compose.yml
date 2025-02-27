@@ -1,18 +1,44 @@
 version: '3'
 services:
   mosquitto:
-    build: 
+    build:
       context: .
       dockerfile: mosquitto.dockerfile
     ports:
       - "1883:1883"
     
+  postgres:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=smarthome
+      - POSTGRES_USER=smarthome
+      - POSTGRES_PASSWORD=smarthome123
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarthome"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   smarthome:
     build: ./smarthome
     ports:
       - "3000:3000"
     depends_on:
       - mosquitto
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=smarthome
+      - DB_USER=smarthome
+      - DB_PASSWORD=smarthome123
+   
 
   fensterkontakt1:
     build: ./fensterkontakt
@@ -22,15 +48,9 @@ services:
     depends_on:
       - smarthome
       - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
 
-  fensterkontakt2:
-    build: ./fensterkontakt
-    environment:
-       - DEVICE_ID=fensterkontakt_2
-       - PORT=3011
-    depends_on:
-       - smarthome
-       - mosquitto
 
   thermostat1:
     build: ./thermostat
@@ -40,33 +60,10 @@ services:
     depends_on:
       - smarthome
       - mosquitto
+    volumes:
+      - ./postgres:/app/postgres  # postgres hinzufügen
 
-  thermostat2:
-   build: ./thermostat
-   environment:
-     - DEVICE_ID=thermostat_2
-     - PORT=3012
-   depends_on:
-     - smarthome
-     - mosquitto
-
-  thermostat3:
-   build: ./thermostat
-   environment:
-     - DEVICE_ID=thermostat_3
-     - PORT=3022
-   depends_on:
-     - smarthome
-     - mosquitto
-
-  thermostat4:
-   build: ./thermostat
-   environment:
-     - DEVICE_ID=thermostat_4
-     - PORT=3032
-   depends_on:
-    - smarthome
-    - mosquitto
+  
 
   webinterface:
     build: ./webinterface
@@ -74,3 +71,6 @@ services:
       - "8080:8080"
     depends_on:
       - smarthome
+
+volumes:
+  postgres_data:

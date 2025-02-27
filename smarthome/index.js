@@ -1,15 +1,11 @@
 const fastify = require('fastify')();
 const mqtt = require('mqtt');
-const { setupRoomRoutes } = require('./room.js');
-const { exec } = require('child_process');
+const dbService = require('./db.js');
 
 // CORS aktivieren
 fastify.register(require('@fastify/cors'), {
   origin: '*'
 });
-
-// Speicher für Geräte
-let registeredDevices = new Map();
 
 // MQTT Client
 const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
@@ -17,177 +13,194 @@ const mqttClient = mqtt.connect('mqtt://mosquitto:1883');
 fastify.register(require('@fastify/formbody'));
 
 // GET Endpoint für Geräteliste
-fastify.get('/', async (request, reply) => {
-  reply.send({ message: "SmartHome-Backend läuft!" });
-});
-
 fastify.get('/devices', async (request, reply) => {
-  return Array.from(registeredDevices.values());
-});
-
-// Shutdown Endpoint
-fastify.post('/shutdown', async (request, reply) => {
   try {
-    // Signal senden, dass wir herunterfahren wollen
-    process.exit(0);  // Beendet den Node.js Prozess
-    return { success: true };
+    const devices = await dbService.getAllDevices();
+    return devices;
   } catch (error) {
-    reply.code(500).send({ error: 'Fehler beim Herunterfahren' });
+    console.error('Error fetching devices:', error);
+    return reply.code(500).send({ error: 'Database error' });
   }
 });
 
-setupRoomRoutes(fastify);
+// Geräteverlauf abrufen
+fastify.get('/device/:id/history', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    const device = await dbService.getDeviceById(id);
+    if (!device) {
+      return reply.code(404).send({ error: 'Gerät nicht gefunden' });
+    }
+    if (device.type === 'thermostat') {
+      const history = await dbService.getThermostatHistory(id);
+      return history;
+    } else {
+      const history = await dbService.getDeviceHistory(id);
+      return history;
+    }
+  } catch (error) {
+    console.error('Error fetching device history:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
 
-// MQTT Verbindung
+// Räume abrufen
+fastify.get('/rooms', async (request, reply) => {
+  try {
+    const rooms = await dbService.getAllRooms();
+    return rooms;
+  } catch (error) {
+    console.error('Error fetching rooms:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+// Neuen Raum hinzufügen
+fastify.post('/rooms', async (request, reply) => {
+  const { name, floor } = request.body;
+  if (!name) {
+    return reply.code(400).send({ error: 'Name is required' });
+  }
+  try {
+    const room = await dbService.addRoom(name, floor || 1);
+    return room;
+  } catch (error) {
+    console.error('Error adding room:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+// Raum löschen
+fastify.delete('/rooms/:id', async (request, reply) => {
+  const { id } = request.params;
+  try {
+    const room = await dbService.deleteRoom(id);
+    return room;
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+// MQTT-Verbindung
 mqttClient.on('connect', () => {
   console.log('SmartHome mit MQTT verbunden');
   mqttClient.subscribe('smarthome/register');
-});
-
-mqttClient.on('error', (err) => {
-  console.error('MQTT-Verbindungsfehler:', err);
-});
-
-// Add MQTT subscription for device status updates
-mqttClient.on('connect', () => {
-  console.log('SmartHome mit MQTT verbunden');
-  mqttClient.subscribe('smarthome/register');
-  mqttClient.subscribe('smarthome/device/+/status'); 
+  mqttClient.subscribe('smarthome/device/+/status');
   mqttClient.subscribe('smarthome/updates');
-
 });
 
-// mqttClient.on('message', (topic, message) => {
-//   if (topic === 'smarthome/register') {
-//     const device = JSON.parse(message.toString());
-//     registeredDevices.set(device.id, device);
-//     console.log('Neues Gerät registriert:', device);
-//   } else if (topic.startsWith('smarthome/device/') && topic.endsWith('/status')) {
-//     const deviceId = topic.split('/')[2];
-//     const statusData = JSON.parse(message.toString());
-
-//     if (registeredDevices.has(deviceId)) {
-//       const device = registeredDevices.get(deviceId);
-//       if (device.type === 'thermostat') {
-//         device.currentTemp = statusData.currentTemp;
-//         device.targetTemp = statusData.targetTemp;
-        
-//         // **Hier die neue Konsolenausgabe für Temperatur-Updates**
-//         console.log(`🔵 Temperatur-Update für ${deviceId}:`);
-//         console.log(`🌡️ Aktuelle Temperatur: ${statusData.currentTemp}°C`);
-//         console.log(`🎯 Zieltemperatur: ${statusData.targetTemp}°C`);
-//       } else {
-//         device.status = statusData.status;
-//       }
-//       registeredDevices.set(deviceId, device);
-//       console.log(`Status für Gerät ${deviceId} aktualisiert:`, device);
-//     }
-//   }
-// });
-
-//Ersetzung des auskommentierten von hier...
-mqttClient.on('message', (topic, message) => {
+mqttClient.on('message', async (topic, message) => {
   if (topic === 'smarthome/register') {
-    const device = JSON.parse(message.toString());
-    registeredDevices.set(device.id, device);
-    console.log('Neues Gerät registriert:', device);
+    try {
+      const device = JSON.parse(message.toString());
+      await dbService.registerDevice(device);
+      console.log('Neues Gerät registriert:', device);
+    } catch (error) {
+      console.error('Error registering device:', error);
+    }
   } else if (topic.startsWith('smarthome/device/') && topic.endsWith('/status')) {
     const deviceId = topic.split('/')[2];
     const statusData = JSON.parse(message.toString());
-
-    if (registeredDevices.has(deviceId)) {
-      const device = registeredDevices.get(deviceId);
-      if (device.type === 'thermostat') {
-        device.currentTemp = statusData.currentTemp;
-        device.targetTemp = statusData.targetTemp;
-        
-        console.log(`Temperatur-Update für ${deviceId}:`);
-        console.log(`Aktuelle Temperatur: ${statusData.currentTemp}°C`);
-        console.log(`Zieltemperatur: ${statusData.targetTemp}°C`);
-      } else {
-        device.status = statusData.status;
-      }
-      registeredDevices.set(deviceId, device);
-      console.log(`Status für Gerät ${deviceId} aktualisiert:`, device);
-    }
-  } else if (topic === 'smarthome/updates') {
-    // Hier die Updates von 'smarthome/updates' verarbeiten
     try {
-      const updateData = JSON.parse(message.toString());
-      const deviceId = updateData.id;
-      
-      if (registeredDevices.has(deviceId)) {
-        const device = registeredDevices.get(deviceId);
-        
-        // Gerätedaten basierend auf dem Update aktualisieren
-        if (updateData.type === 'thermostat') {
-          device.currentTemp = updateData.currentTemp;
-          device.targetTemp = updateData.targetTemp;
-          console.log(`Temperatur-Update über smarthome/updates für ${deviceId}:`);
-          console.log(`Aktuelle Temperatur: ${updateData.currentTemp}°C`);
-          console.log(`Zieltemperatur: ${updateData.targetTemp}°C`);
-        } else if (updateData.type === 'fensterkontakt') {
-          device.status = updateData.status;
-          console.log(`Fensterstatus-Update für ${deviceId}: ${updateData.status}`);
-        }
-        
-        registeredDevices.set(deviceId, device);
+      if (statusData.currentTemp !== undefined && statusData.targetTemp !== undefined) {
+        await dbService.logThermostatStatus(deviceId, statusData.currentTemp, statusData.targetTemp);
+      } else {
+        await dbService.logDeviceStatus(deviceId, statusData.status);
       }
     } catch (error) {
-      console.error('Fehler beim Verarbeiten des MQTT-Updates:', error);
+      console.error(`Error updating status for device ${deviceId}:`, error);
     }
   }
 });
-//...bis hier
 
-fastify.listen({ port: 3000, host: '0.0.0.0' }, (err) => {
+// In server.js
+// Add this function to load all device statuses and room assignments on startup
+async function initializeSystem() {
+  try {
+    console.log('Initialisiere System...');
+    
+    // Lade alle Geräte mit ihren Räumen aus der Datenbank
+    const devices = await dbService.getAllDevicesWithRooms();
+    console.log(`${devices.length} Geräte aus der Datenbank geladen`);
+    
+    // Lade alle Räume aus der Datenbank
+    const rooms = await dbService.getAllRooms();
+    console.log(`${rooms.length} Räume aus der Datenbank geladen`);
+    
+    // Strukturierte Räume erstellen mit ihren zugewiesenen Geräten
+    const roomsWithDevices = rooms.map(room => {
+      const roomDevices = devices.filter(device => device.room_id === room.id)
+        .map(device => device.id);
+      
+      return {
+        ...room,
+        devices: roomDevices
+      };
+    });
+    
+    // Loge die gefundenen Räume und Geräte
+    roomsWithDevices.forEach(room => {
+      console.log(`Raum ${room.name} (ID: ${room.id}) hat ${room.devices.length} Geräte`);
+    });
+    
+    // Sende alle Gerätestatus als MQTT-Updates
+    devices.forEach(device => {
+      if (device.type === 'fensterkontakt' && device.status) {
+        mqttClient.publish('smarthome/updates', JSON.stringify({
+          id: device.id,
+          type: device.type,
+          status: device.status
+        }));
+      } else if (device.type === 'thermostat' && device.current_temp && device.target_temp) {
+        mqttClient.publish('smarthome/updates', JSON.stringify({
+          id: device.id,
+          type: device.type,
+          currentTemp: device.current_temp,
+          targetTemp: device.target_temp
+        }));
+      }
+    });
+    
+    console.log('System wurde erfolgreich initialisiert!');
+  } catch (error) {
+    console.error('Fehler bei der Systeminitialisierung:', error);
+  }
+}
+
+
+
+// Endpunkt zum Zuweisen von Geräten zu einem Raum
+fastify.put('/rooms/:id/devices', async (request, reply) => {
+  const { id } = request.params;
+  const { deviceIds } = request.body;
+  
+  if (!deviceIds || !Array.isArray(deviceIds)) {
+    return reply.code(400).send({ error: 'deviceIds must be an array' });
+  }
+  
+  try {
+    await dbService.assignDevicesToRoom(id, deviceIds);
+    
+    // Optional: Lade den aktualisierten Raum
+    const room = await dbService.getRoomById(id);
+    const devices = await dbService.getDevicesByRoomId(id);
+    
+    return {
+      ...room,
+      devices: devices.map(d => d.id)
+    };
+  } catch (error) {
+    console.error('Error assigning devices to room:', error);
+    return reply.code(500).send({ error: 'Database error' });
+  }
+});
+
+// Server starten
+fastify.listen({ port: 3000, host: '0.0.0.0' }, async (err) => {
   if (err) {
     console.error(err);
     process.exit(1);
   }
   console.log('SmartHome Server läuft auf Port 3000');
-});
-
-
-fastify.post('/device/status', async (request, reply) => {
-  const { deviceId, status } = request.body;
-  console.log(request.body)
-  
-  if (!deviceId || !status) {
-    return reply.code(400).send({ error: 'Gerät-ID und Status sind erforderlich' });
-  }
-  
-  try {
-
-    
-    // Status-Änderung über MQTT veröffentlichen
-    mqttClient.publish(`smarthome/device/${deviceId}/status`, JSON.stringify({
-      status: status
-    }));
-    
-    // Erfolgsantwort senden
-    return reply.send({ success: true });
-  } catch (err) {
-    console.error('Fehler beim Ändern des Gerätestatus:', err);
-    return reply.code(500).send({ error: 'Interner Serverfehler hier' });
-  }
-});
-fastify.post('/device/thermostat/status', async (request, reply) => {
-  const { deviceId, currentTemp, targetTemp } = request.body;
-  
-  if (!deviceId || currentTemp === undefined || targetTemp === undefined) {
-    return reply.code(400).send({ error: 'Gerät-ID, aktuelle Temperatur und Zieltemperatur sind erforderlich' });
-  }
-  
-  try {
-    mqttClient.publish(`smarthome/device/${deviceId}/status`, JSON.stringify({
-      currentTemp: currentTemp,
-      targetTemp: targetTemp
-    }));
-    
-    return reply.send({ success: true });
-  } catch (err) {
-    console.error('Fehler beim Ändern des Thermostat-Status:', err);
-    return reply.code(500).send({ error: 'Interner Serverfehler' });
-  }
 });
