@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import './RoomConfigurationDetails.css'; // Importiere die CSS-Datei
+import './RoomConfigurationDetails.css';
+import axios from 'axios';
 
 function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
   const [selectedDevices, setSelectedDevices] = useState(room.devices || []);
@@ -16,27 +17,22 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  // Funktion zur Auswahl eines Geräts
   const handleDeviceSelection = (deviceId, deviceType) => {
     if (deviceType === 'fensterkontakt') {
-      // Wenn ein Fensterkontakt ausgewählt wird, prüfen, ob bereits ein Fensterkontakt ausgewählt ist
       const hasSelectedWindow = selectedDevices.some(id => {
         const device = devices.find(d => d.id === id);
         return device?.type === 'fensterkontakt';
       });
 
       if (hasSelectedWindow) {
-        // Wenn bereits ein Fensterkontakt ausgewählt ist, entferne den aktuellen Fensterkontakt
         setSelectedDevices(selectedDevices.filter(id => {
           const device = devices.find(d => d.id === id);
           return device?.type !== 'fensterkontakt';
         }));
       }
 
-      // Füge den neuen Fensterkontakt hinzu
       setSelectedDevices(prev => [...prev, deviceId]);
     } else {
-      // Für andere Gerätetypen (z.B. Thermostat) normale Auswahl logik
       if (selectedDevices.includes(deviceId)) {
         setSelectedDevices(selectedDevices.filter(id => id !== deviceId));
       } else {
@@ -62,6 +58,10 @@ function RoomConfigurationDetails({ room, devices, onSave, onCancel }) {
         )
       };
       await onSave(updatedRoom);
+  
+      await axios.post('http://localhost:3000/thermostats/settings', {
+        thermostats: updatedRoom.thermostats
+      });
     } catch (error) {
       console.error('Fehler beim Speichern:', error);
     } finally {

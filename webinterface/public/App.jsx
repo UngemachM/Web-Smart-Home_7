@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import RoomConfiguration from './components/RoomConfiguration';
-import './App.css'; // Importiere die CSS-Datei
+import './App.css';
 
 function App() {
   const [devices, setDevices] = useState([]);
@@ -14,7 +14,6 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // fetchData außerhalb des useEffect definieren, damit sie von anderen Funktionen aufgerufen werden kann
   const fetchData = async () => {
     try {
       const [devicesRes, roomsRes] = await Promise.all([
@@ -32,11 +31,9 @@ function App() {
         return aNum - bNum;
       });
       
-      // Prüfe, ob die Daten tatsächlich anders sind, bevor ein Update durchgeführt wird
       const devicesChanged = JSON.stringify(sortedDevices) !== JSON.stringify(devices);
       const roomsChanged = JSON.stringify(roomsRes.data) !== JSON.stringify(rooms);
       
-      // Nur aktualisieren, wenn sich etwas geändert hat
       if (devicesChanged) {
         setDevices(sortedDevices);
       }
@@ -52,7 +49,6 @@ function App() {
     }
   };
 
-  // Ändere deinen existierenden useEffect für das Daten-Fetching
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
@@ -98,11 +94,10 @@ function App() {
     }
   };
 
-  const handleWindowStatusChange = async (deviceId, newStatus) => {
+  const handleWindowStatusChange = async (deviceId, newStatus, targetTemp) => {
     try {
-      console.log(`Sende Status-Änderung für ${deviceId} auf ${newStatus}`);
+      console.log(`Sende Status-Änderung für ${deviceId} auf ${newStatus} mit Zieltemperatur ${targetTemp}`);
       
-      // Update local state optimistically
       setDevices(prevDevices => prevDevices.map(device => 
         device.id === deviceId 
           ? { ...device, status: newStatus } 
@@ -111,7 +106,8 @@ function App() {
       
       const response = await axios.post('http://localhost:3000/device/status', {
         deviceId: deviceId,
-        status: newStatus
+        status: newStatus,
+        targetTemp: targetTemp
       });
       
       if (response.data.success) {
@@ -120,29 +116,24 @@ function App() {
           type: 'success'
         });
         
-        // Warte kurz und lade dann die Daten neu
         setTimeout(() => {
           fetchData();
-        }, 1000); // 1 Sekunde Verzögerung
-        
+        }, 1000);
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
     } catch (err) {
       console.error('Fehler beim Ändern des Fensterstatus:', err);
       
-      // Revert local state on error - get the opposite of what we tried to set
       setDevices(prevDevices => prevDevices.map(device => 
         device.id === deviceId 
           ? { ...device, status: newStatus === 'closed' ? 'open' : 'closed' } 
           : device
       ));
       
-      // Detaillierte Fehlermeldung anzeigen
       const errorMessage = err.response?.data?.error || err.message || 'Fehler beim Ändern des Fensterstatus';
       setError(errorMessage);
       
-      // Fehlermeldung nach 5 Sekunden ausblenden
       setTimeout(() => setError(null), 5000);
     }
   };
@@ -180,11 +171,9 @@ function App() {
           type: 'success'
         });
         
-        // Auch hier nach einer erfolgreichen Thermostat-Änderung die Daten neu laden
         setTimeout(() => {
           fetchData();
         }, 250);
-        
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
@@ -195,11 +184,8 @@ function App() {
     }
   };
 
-  
-
   const DashboardContent = () => (
     <>
-      {/* Registrierte Geräte */}
       <div className="mb-6">
         <h2 className="text-xl mb-4">Registrierte Geräte:</h2>
         <div className="space-y-2">
@@ -213,7 +199,7 @@ function App() {
                     Status: <span className={`font-medium ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>{device.status}</span>
                   </div>
                   <button 
-                    onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open')}
+                    onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
                     className={`button small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
                   >
                     {device.status === 'open' ? 'Fenster schließen' : 'Fenster öffnen'}
@@ -288,7 +274,9 @@ function App() {
                         {device.type === 'thermostat' && (
   <div className="flex justify-between items-center mt-2">
     <div className="text-sm text-gray-600">
-      Aktuell: {device.currentTemp}°C
+      <span className="ml-2 text-gray-600">
+        (Aktuell: {room.thermostats?.[device.id]?.roomTemp || device.roomTemp}°C)
+      </span>
     </div>
   </div>
 )}
@@ -300,7 +288,7 @@ function App() {
                       </div>
                       {device.type === 'fensterkontakt' && (
                         <button 
-                          onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open')}
+                          onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open', device.targetTemp)}
                           className={`button extra-small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
                         >
                           {device.status === 'open' ? 'Schließen' : 'Öffnen'}
