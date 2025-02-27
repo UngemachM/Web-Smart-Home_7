@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import RoomConfiguration from './components/RoomConfiguration';
-import './App.css'; // Importiere die CSS-Datei
+import './App.css';
 
 function App() {
   const [devices, setDevices] = useState([]);
@@ -14,69 +14,109 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // fetchData außerhalb des useEffect definieren, damit sie von anderen Funktionen aufgerufen werden kann
+  // Funktion zum Abrufen der Daten
   const fetchData = async () => {
     try {
       const [devicesRes, roomsRes] = await Promise.all([
         axios.get('http://localhost:3000/devices'),
-        axios.get('http://localhost:3000/rooms')
+        axios.get('http://localhost:3000/rooms'),
       ]);
-      
+  
       const sortedDevices = devicesRes.data.sort((a, b) => {
         const aNum = parseInt(a.id.split('_')[1]);
         const bNum = parseInt(b.id.split('_')[1]);
-        
+  
         if (a.type !== b.type) {
           return a.type === 'fensterkontakt' ? -1 : 1;
         }
         return aNum - bNum;
       });
-      
-      // Prüfe, ob die Daten tatsächlich anders sind, bevor ein Update durchgeführt wird
-      const devicesChanged = JSON.stringify(sortedDevices) !== JSON.stringify(devices);
-      const roomsChanged = JSON.stringify(roomsRes.data) !== JSON.stringify(rooms);
-      
-      // Nur aktualisieren, wenn sich etwas geändert hat
-      if (devicesChanged) {
+  
+      // Räume mit vorhandenen Gerätezuweisungen aktualisieren
+      setRooms((prevRooms) => {
+        const updatedRooms = roomsRes.data.map((room) => {
+          const existingRoom = prevRooms.find((r) => r.id === room.id);
+          return {
+            ...room,
+            devices: existingRoom ? existingRoom.devices : [], // Behalte vorhandene Geräte, falls vorhanden
+          };
+        });
+  
+        return updatedRooms;
+      });
+  
+      // Geräte nur aktualisieren, wenn sich etwas geändert hat
+      if (JSON.stringify(sortedDevices) !== JSON.stringify(devices)) {
         setDevices(sortedDevices);
       }
-      
-      if (roomsChanged) {
-        setRooms(roomsRes.data);
-      }
-      
+  
       setError(null);
     } catch (err) {
       console.error('Fehler beim Abrufen der Daten:', err);
       setError('Fehler beim Laden der Daten');
     }
   };
+  
 
-  // Ändere deinen existierenden useEffect für das Daten-Fetching
+  // Effekt für das Daten-Fetching
   useEffect(() => {
     fetchData();
+    fetchRoomsWithDevices();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
+ 
+const fetchRoomsWithDevices = async () => {
+  try {
+    const roomsResponse = await axios.get('http://localhost:3000/rooms/:id/devices');
+    const roomsData = roomsResponse.data;
+
+    // Räume verarbeiten und Gerätezuweisung beibehalten
+    const updatedRooms = roomsData.map((room) => ({
+      id: room.id,
+      name: room.name,
+      floor: room.floor,
+      created_at: room.created_at,
+      devices: room.devices || [], // Falls keine Geräte vorhanden sind, bleibt das Array leer
+    }));
+
+    // Räume nach Etage sortieren (aufsteigend)
+    updatedRooms.sort((a, b) => a.floor - b.floor);
+
+    setRooms(updatedRooms);
+    setError(null);
+  } catch (error) {
+    console.error('Fehler beim Laden der Räume mit Geräten:', error);
+    setError('Fehler beim Laden der Räume');
+  }
+};
+
+  
+  
+ 
+  
+
+  // Effekt für Benachrichtigungen
   useEffect(() => {
     if (location.state?.message) {
       console.log('Nachricht empfangen:', location.state.message);
       setNotification({
         message: location.state.message,
-        type: location.state.type
+        type: location.state.type,
       });
       setTimeout(() => setNotification(null), 30000);
     }
   }, [location]);
 
+  // Funktion zum Erstellen eines Raums
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!roomName.trim()) return;
 
     try {
       const response = await axios.post('http://localhost:3000/rooms', {
-        name: roomName
+        name: roomName,
       });
       setRoomName('');
       navigate(`/configure-room/${response.data.id}`);
@@ -85,68 +125,73 @@ function App() {
     }
   };
 
+  // Funktion zum Löschen eines Raums
   const handleDeleteRoom = async (roomId) => {
     try {
       await axios.delete(`http://localhost:3000/rooms/${roomId}`);
-      setRooms(rooms.filter(room => room.id !== roomId));
+      setRooms(rooms.filter((room) => room.id !== roomId));
       setNotification({
         message: 'Raum erfolgreich gelöscht!',
-        type: 'success'
+        type: 'success',
       });
     } catch (err) {
       setError('Fehler beim Löschen des Raums');
     }
   };
 
+  // Funktion zum Ändern des Fensterstatus
   const handleWindowStatusChange = async (deviceId, newStatus) => {
     try {
       console.log(`Sende Status-Änderung für ${deviceId} auf ${newStatus}`);
-      
+
       // Update local state optimistically
-      setDevices(prevDevices => prevDevices.map(device => 
-        device.id === deviceId 
-          ? { ...device, status: newStatus } 
-          : device
-      ));
-      
+      setDevices((prevDevices) =>
+        prevDevices.map((device) =>
+          device.id === deviceId ? { ...device, status: newStatus } : device
+        )
+      );
+
       const response = await axios.post('http://localhost:3000/device/status', {
         deviceId: deviceId,
-        status: newStatus
+        status: newStatus,
       });
-      
+
       if (response.data.success) {
         setNotification({
           message: `Fensterstatus auf "${newStatus}" geändert!`,
-          type: 'success'
+          type: 'success',
         });
-        
+
         // Warte kurz und lade dann die Daten neu
         setTimeout(() => {
           fetchData();
         }, 1000); // 1 Sekunde Verzögerung
-        
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
     } catch (err) {
       console.error('Fehler beim Ändern des Fensterstatus:', err);
-      
-      // Revert local state on error - get the opposite of what we tried to set
-      setDevices(prevDevices => prevDevices.map(device => 
-        device.id === deviceId 
-          ? { ...device, status: newStatus === 'closed' ? 'open' : 'closed' } 
-          : device
-      ));
-      
+
+      // Revert local state on error
+      setDevices((prevDevices) =>
+        prevDevices.map((device) =>
+          device.id === deviceId
+            ? { ...device, status: newStatus === 'closed' ? 'open' : 'closed' }
+            : device
+        )
+      );
+
       // Detaillierte Fehlermeldung anzeigen
-      const errorMessage = err.response?.data?.error || err.message || 'Fehler beim Ändern des Fensterstatus';
+      const errorMessage =
+        err.response?.data?.error || err.message || 'Fehler beim Ändern des Fensterstatus';
       setError(errorMessage);
-      
+
       // Fehlermeldung nach 5 Sekunden ausblenden
       setTimeout(() => setError(null), 5000);
     }
   };
 
+  // Funktion zum Herunterfahren des Systems
   const handleShutdown = async () => {
     if (window.confirm('Möchten Sie das System wirklich beenden?')) {
       try {
@@ -160,60 +205,72 @@ function App() {
     }
   };
 
+  // Funktion zum Ändern des Thermostat-Status
   const handleThermostatStatusChange = async (deviceId, currentTemp, targetTemp) => {
     try {
-      setDevices(prevDevices => prevDevices.map(device => 
-        device.id === deviceId 
-          ? { ...device, currentTemp: currentTemp, targetTemp: targetTemp } 
-          : device
-      ));
-      
+      setDevices((prevDevices) =>
+        prevDevices.map((device) =>
+          device.id === deviceId
+            ? { ...device, currentTemp: currentTemp, targetTemp: targetTemp }
+            : device
+        )
+      );
+
       const response = await axios.post('http://localhost:3000/device/thermostat/status', {
         deviceId: deviceId,
         currentTemp: currentTemp,
-        targetTemp: targetTemp
+        targetTemp: targetTemp,
       });
-      
+
       if (response.data.success) {
         setNotification({
           message: `Thermostat-Status aktualisiert!`,
-          type: 'success'
+          type: 'success',
         });
-        
-        // Auch hier nach einer erfolgreichen Thermostat-Änderung die Daten neu laden
+
+        // Daten nach einer erfolgreichen Änderung neu laden
         setTimeout(() => {
           fetchData();
         }, 250);
-        
       } else {
         throw new Error(response.data.error || 'Unbekannter Fehler');
       }
     } catch (err) {
       console.error('Fehler beim Ändern des Thermostat-Status:', err);
-      setError(err.response?.data?.error || err.message || 'Fehler beim Ändern des Thermostat-Status');
+      setError(
+        err.response?.data?.error || err.message || 'Fehler beim Ändern des Thermostat-Status'
+      );
       setTimeout(() => setError(null), 5000);
     }
   };
 
-  
-
+  // Dashboard-Inhalt
   const DashboardContent = () => (
     <>
       {/* Registrierte Geräte */}
       <div className="mb-6">
         <h2 className="text-xl mb-4">Registrierte Geräte:</h2>
         <div className="space-y-2">
-          {devices.map(device => (
+          {devices.map((device) => (
             <div key={device.id} className="device-card">
               <div className="font-bold capitalize">{device.type}</div>
               <div className="text-gray-600">ID: {device.id}</div>
               {device.type === 'fensterkontakt' && (
                 <div className="flex justify-between items-center mt-2">
                   <div className="text-sm text-gray-600">
-                    Status: <span className={`font-medium ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>{device.status}</span>
+                    Status:{' '}
+                    <span
+                      className={`font-medium ${
+                        device.status === 'open' ? 'text-red-500' : 'text-green-500'
+                      }`}
+                    >
+                      {device.status}
+                    </span>
                   </div>
-                  <button 
-                    onClick={() => handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open')}
+                  <button
+                    onClick={() =>
+                      handleWindowStatusChange(device.id, device.status === 'open' ? 'closed' : 'open')
+                    }
                     className={`button small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
                   >
                     {device.status === 'open' ? 'Fenster schließen' : 'Fenster öffnen'}
@@ -225,18 +282,17 @@ function App() {
         </div>
       </div>
 
-      {error && (
-        <div className="notification error">
-          {error}
-        </div>
-      )}
+      {/* Fehlermeldung */}
+      {error && <div className="notification error">{error}</div>}
 
+      {/* Benachrichtigung */}
       {notification && (
         <div className={`notification ${notification.type === 'success' ? 'success' : 'error'}`}>
           {notification.message}
         </div>
       )}
 
+      {/* Formular zum Erstellen eines Raums */}
       <form onSubmit={handleCreateRoom} className="mb-6">
         <div className="flex flex-col sm:flex-row gap-2">
           <input
@@ -247,79 +303,62 @@ function App() {
             className="input"
             autoFocus
           />
-          <button 
-            type="submit"
-            className="button primary"
-          >
+          <button type="submit" className="button primary">
             Raum anlegen
           </button>
         </div>
       </form>
 
-      <div className="grid gap-4">
-        {rooms.map(room => (
-          <div key={room.id} className="room-card">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold">{room.name}</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate(`/configure-room/${room.id}`)}
-                  className="button edit"
-                >
-                  Bearbeiten
-                </button>
-                <button
-                  onClick={() => handleDeleteRoom(room.id)}
-                  className="button delete"
-                >
-                  Löschen
-                </button>
-              </div>
-            </div>
-            <div className="mt-2">
-              <h4 className="text-sm font-medium">Zugewiesene Geräte:</h4>
-              <ul className="text-sm text-gray-600">
-                {room.devices?.map(deviceId => {
-                  const device = devices.find(d => d.id === deviceId);
-                  return device ? (
-                    <li key={deviceId} className="flex justify-between items-center py-1">
-                      <div>
-                        {device.type}: {deviceId}
-                        {device.type === 'thermostat' && (
-  <div className="flex justify-between items-center mt-2">
-    <div className="text-sm text-gray-600">
-      Aktuell: {device.currentTemp}°C
-    </div>
-  </div>
-)}
-                        {device.type === 'fensterkontakt' && (
-                          <span className={`ml-2 ${device.status === 'open' ? 'text-red-500' : 'text-green-500'}`}>
-                            ({device.status})
-                          </span>
-                        )}
-                      </div>
-                      {device.type === 'fensterkontakt' && (
-                        <button 
-                          onClick={() => handleWindowStatusChange(deviceId, device.status === 'open' ? 'closed' : 'open')}
-                          className={`button extra-small ${device.status === 'open' ? 'close-button' : 'open-button'}`}
-                        >
-                          {device.status === 'open' ? 'Schließen' : 'Öffnen'}
-                        </button>
-                      )}
-                    </li>
-                  ) : null;
-                })}
-              </ul>
-            </div>
-          </div>
-        ))}
+     {/* Räume anzeigen */}
+<div className="grid gap-4">
+  {rooms.map((room) => (
+    <div key={room.id} className="room-card">
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold">{room.name}</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate(`/configure-room/${room.id}`)}
+            className="button edit"
+          >
+            Bearbeiten
+          </button>
+          <button
+            onClick={() => handleDeleteRoom(room.id)}
+            className="button delete"
+          >
+            Löschen
+          </button>
+        </div>
       </div>
 
+      {/* Zugewiesene Geräte anzeigen */}
+      <div className="mt-4">
+        <h4 className="text-sm font-medium">Zugewiesene Geräte:</h4>
+        <ul>
+          {(room.devices && room.devices.length > 0) ? (
+            room.devices.map((device) => (
+              <li key={device}>
+                {/* Annahme: Gerät-IDs sind Strings wie "thermostat_1", "fensterkontakt_1" */}
+                <span className="font-bold">{device}</span> 
+                {/* Für mehr Details könnte man eine separate Geräte-API aufrufen */}
+              </li>
+            ))
+          ) : (
+            <li>Keine Geräte zugewiesen</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  ))}
+</div>
+
+
+
+          
+
+      {/* System beenden */}
       <div className="mt-8 mb-4">
-        <button 
-          onClick={handleShutdown}
-          className="button shutdown"
-        >
+        <button onClick={handleShutdown} className="button shutdown">
           System beenden
         </button>
       </div>
@@ -335,15 +374,16 @@ function App() {
         <Route path="/" element={<DashboardContent />} />
       </Routes>
 
+      {/* Debug-Info */}
       <div className="debug-container">
-        <button 
+        <button
           onClick={() => setIsDebugOpen(!isDebugOpen)}
           className="button debug-toggle"
         >
           <span className={`debug-arrow ${isDebugOpen ? 'open' : ''}`}>▶</span>
           Debug Info
         </button>
-        
+
         {isDebugOpen && (
           <pre className="debug-info">
             {JSON.stringify({ devices, rooms }, null, 2)}
